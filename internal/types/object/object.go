@@ -8,20 +8,12 @@ import (
 )
 
 type ObjectType string
-type PatternType string
 
 const (
 	INTEGER_OBJ           = "INTEGER"
 	COMPILED_FUNCTION_OBJ = "COMPILED_FUNCTION"
 	CONSTRUCTOR_OBJ       = "CONSTRUCTOR"
 	INSTANCE_OBJ          = "INSTANCE"
-	PATTERN_OBJ           = "PATTERN"
-)
-
-const (
-	CONSTRUCTOR_PAT = "CONSTRUCTOR"
-	VARIABLE_PAT    = "VARIABLE"
-	CONST_PAT       = "CONST"
 )
 
 type Object interface {
@@ -82,5 +74,5 @@ func (i *Instance) String() string {
 	for _, arg := range i.Args {
 		args = append(args, arg.String())
 	}
-	return fmt.Sprintf("Constructor Instance%s(%s)", i.Constructor.Name, strings.Join(args, ", "))
+	return fmt.Sprintf("Constructor Instance %s(%s)", i.Constructor.Name, strings.Join(args, ", "))
 }

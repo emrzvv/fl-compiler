@@ -1,11 +1,13 @@
 package compiler
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/emrzvv/fl-compiler/internal/compiler/ast"
 	"github.com/emrzvv/fl-compiler/internal/compiler/code"
 	"github.com/emrzvv/fl-compiler/internal/types/object"
+	"github.com/emrzvv/fl-compiler/internal/types/pattern"
 )
 
 type Compiler struct {
@@ -15,6 +17,9 @@ type Compiler struct {
 	// subToSuper          map[string]string
 	// constructorArity    map[string]int
 	constructorsMapping map[string]int
+	patterns            []pattern.Pattern
+	patmatJumps         []int
+	matches             [][]int
 }
 
 func NewCompiler() *Compiler {
@@ -25,6 +30,9 @@ func NewCompiler() *Compiler {
 		// subToSuper:       make(map[string]string),
 		// constructorArity: make(map[string]int),
 		constructorsMapping: make(map[string]int),
+		patterns:            []pattern.Pattern{},
+		patmatJumps:         []int{},
+		matches:             [][]int{},
 	}
 }
 
@@ -47,6 +55,12 @@ func (c *Compiler) Compile(node ast.Node) error {
 			// TODO: everything below - to remove
 			if d.ExprConstructor != nil {
 				err := c.Compile(d.ExprConstructor)
+				if err != nil {
+					return err
+				}
+			}
+			if d.FunDef != nil {
+				err := c.Compile(d.FunDef)
 				if err != nil {
 					return err
 				}
@@ -82,6 +96,40 @@ func (c *Compiler) Compile(node ast.Node) error {
 		name := node.Name.Name
 		index := c.constructorsMapping[name]
 		c.emit(code.OpConstruct, index, len(node.Arguments))
+	case *ast.FunDef:
+		c.patmatJumps = make([]int, 0)
+		c.matches = make([][]int, 0)
+		// begin := len(c.instructions) - 1
+		for _, rule := range node.Rules {
+			err := c.Compile(rule)
+			if err != nil {
+				return err
+			}
+		}
+		end := c.emit(code.OpMatchFailed)
+		c.patmatJumps = append(c.patmatJumps, end)
+		c.patmatJumps = c.patmatJumps[1:]
+		c.setPatmatJumpingPoints()
+
+	case *ast.FunRule:
+		patternDef := node.Pattern
+		expr := node.Expression
+		matchesPositions := []int{}
+
+		for _, patternArg := range patternDef.Arguments {
+			pattern, err := c.collectPattern(patternArg)
+			if err != nil {
+				return err
+			}
+			patternIndex := c.addPattern(pattern)
+			matchPos := c.emit(code.OpMatch, patternIndex, 0)
+			matchesPositions = append(matchesPositions, matchPos)
+		}
+		c.patmatJumps = append(c.patmatJumps, matchesPositions[0])
+		c.matches = append(c.matches, matchesPositions)
+		c.Compile(expr)
+		c.emit(code.OpReturnValue)
+
 	case *ast.FunCall:
 		switch node.Name {
 		case "+":
@@ -121,6 +169,55 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.emit(code.OpConstant, c.addConstant(number))
 	}
 	return nil
+}
+
+func (c *Compiler) setPatmatJumpingPoints() error {
+	for i, jumpTo := range c.patmatJumps {
+		for _, matchIdx := range c.matches[i] {
+			offset := 3
+			binary.BigEndian.PutUint16(c.instructions[matchIdx+offset:], uint16(jumpTo))
+		}
+	}
+	return nil // TODO: ???
+}
+
+func (c *Compiler) collectPattern(p *ast.PatternArgument) (pattern.Pattern, error) {
+	if p.Variable != "" {
+		return &pattern.VariablePattern{
+			Name: p.Variable,
+		}, nil
+	}
+	if p.Const != nil {
+		return &pattern.ConstPattern{
+			Const: &object.Integer{ // TODO: not only integer possible const
+				Value: int64(p.Const.Number),
+			},
+		}, nil
+	}
+	if p.Name.Name != "" {
+		args := []pattern.Pattern{}
+		for _, arg := range p.Arguments {
+			argPattern, err := c.collectPattern(arg)
+			if err != nil {
+				return &pattern.ConstructorPattern{}, err
+			}
+			args = append(args, argPattern)
+		}
+		constrIndex, ok := c.constructorsMapping[p.Name.Name]
+		if !ok {
+			return nil, fmt.Errorf("could not find constructor %s on index %d", p.Name.Name, constrIndex)
+		}
+		return &pattern.ConstructorPattern{
+			Constructor: c.constants[constrIndex].(*object.Constructor),
+			Args:        args,
+		}, nil
+	}
+	return nil, fmt.Errorf("could not construct pattern: %+v", p)
+}
+
+func (c *Compiler) addPattern(pat pattern.Pattern) int {
+	c.patterns = append(c.patterns, pat)
+	return len(c.patterns) - 1
 }
 
 func (c *Compiler) addConstant(obj object.Object) int {

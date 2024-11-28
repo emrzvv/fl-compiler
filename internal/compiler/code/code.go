@@ -17,6 +17,7 @@ const (
 	OpReturnValue
 	OpConstruct
 	OpMatch
+	OpMatchFailed
 )
 
 type Definition struct {
@@ -30,6 +31,8 @@ var definitions = map[OpCode]*Definition{
 	OpCall:        {"OpCall", []int{}},
 	OpReturnValue: {"OpReturnValue", []int{}},
 	OpConstruct:   {"OpConstruct", []int{2, 2}}, // {index, arity}
+	OpMatch:       {"OpMatch", []int{2, 2}},     // {pattern_index, jmp_to_if_not_matched}
+	OpMatchFailed: {"OpMatchFailed", []int{}},
 }
 
 func Lookup(op byte) (*Definition, error) {

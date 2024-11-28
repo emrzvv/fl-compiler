@@ -222,11 +222,11 @@ func GetAST() {
 	//input := `type [List x]: Cons x [List x] | Nil .`
 
 	// program, err := parser.ParseString("", input)
-	r, err := os.Open("./main/input2")
+	r, err := os.Open("./input2")
 	if err != nil {
 		panic(err)
 	}
-	program, err := parser.Parse("./input", r)
+	program, err := parser.Parse("./input2", r)
 
 	if err != nil {
 		panic(err)

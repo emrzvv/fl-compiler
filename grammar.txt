@@ -1,0 +1,29 @@
+<TYPE_NAME> = [a-zA-Z][a-zA-Z0-9_]*
+<TYPE_GENERAL> = [a-zA-Z][a-zA-Z0-9_]*
+<FUN_NAME> = [a-zA-Z\+\-\*\/][a-zA-Z0-9_]* 
+<VAR_NAME> = [a-zA-Z][a-zA-Z0-9_]*
+
+<program> = <definition>+
+<definition> = <type_def> | <fun_def> | <fun_call>
+
+
+<type_def> = "type" "[" <TYPE_NAME> (<TYPE_GENERAL>)* "]" ":" <type_alternatives> "."
+<type_alternatives> = <type_alternative> ("|" <type_alternative>)*
+<type_alternative> = <constructor>
+<constructor> = <VAR_NAME> (<constructor_parameter>)*
+<constructor_parameter> = "[" <TYPE_NAME> (type_parameter)* "]" | <TYPE_GENERAL>
+
+<type_common> = "[" <TYPE_NAME> (<type_parameter>)* "]" | <type_builtin>
+<type_parameter> = <type_common> | <TYPE_GENERAL> | <type_builtin>
+<type_builtin> = "Int"
+
+<fun_def> = <fun_signature> ":" <fun_rule> ("|" <fun_rule>)* "."
+<fun_signature> = "fun" "(" <FUN_NAME> (<type_common>)* ")" "->" <type_common>
+
+<fun_rule> = <pattern> "->" <expression>
+<pattern> = "(" <FUN_NAME>  (<pattern_argument>)* ")"
+<pattern_argument> = "[" <TYPE_NAME> (<pattern_argument)* "]" | <VAR_NAME>
+
+<expression> = <fun_call> | <expr_constructor> | <const>  | <VAR_NAME>
+<fun_call> = "(" <FUN_NAME> (<expression>)* ")"
+<expr_consturctor> = "[" <TYPE_NAME> (<expression>)* "]"
