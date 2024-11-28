@@ -28,7 +28,7 @@ type Definition struct {
 var definitions = map[OpCode]*Definition{
 	OpConstant:    {"OpConstant", []int{2}},
 	OpAdd:         {"OpAdd", []int{2}},
-	OpCall:        {"OpCall", []int{}},
+	OpCall:        {"OpCall", []int{2}},
 	OpReturnValue: {"OpReturnValue", []int{}},
 	OpConstruct:   {"OpConstruct", []int{2, 2}}, // {index, arity}
 	OpMatch:       {"OpMatch", []int{2, 2}},     // {pattern_index, jmp_to_if_not_matched}

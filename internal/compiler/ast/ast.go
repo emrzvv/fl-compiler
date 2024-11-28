@@ -178,7 +178,7 @@ type FunCall struct {
 	Pos lexer.Position
 
 	Name      string        `"(" @Ident`
-	Arguments *[]Expression `@@* ")"`
+	Arguments []*Expression `@@* ")"`
 }
 
 func (fc *FunCall) String() string { return "tmp" }

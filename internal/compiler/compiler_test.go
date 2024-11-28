@@ -102,7 +102,7 @@ func TestTypeDefinitions(t *testing.T) {
 }
 
 func TestPatterns(t *testing.T) {
-	predefinedConstants := map[string][]interface{}{
+	predef := map[string][]interface{}{
 		"list_nil": {
 			&object.Constructor{
 				Name:      "Nil",
@@ -122,19 +122,37 @@ func TestPatterns(t *testing.T) {
 				Supertype: "List",
 			},
 		},
+		"int_int_simple": {
+			&object.CompiledFunction{
+				Instructions: concatInstructions([]code.Instructions{
+					code.Make(code.OpMatch, 0, 14),
+					code.Make(code.OpMatch, 1, 14),
+					code.Make(code.OpConstant, 0),
+					code.Make(code.OpReturnValue),
+					code.Make(code.OpMatchFailed),
+				}),
+			},
+		},
+		"list_1_0": {
+			&object.CompiledFunction{
+				Instructions: concatInstructions([]code.Instructions{
+					code.Make(code.OpMatch, 0, 9),
+					code.Make(code.OpConstant, 2),
+					code.Make(code.OpReturnValue),
+					code.Make(code.OpMatch, 1, 18),
+					code.Make(code.OpConstant, 3),
+					code.Make(code.OpReturnValue),
+					code.Make(code.OpMatchFailed),
+				}),
+			},
+		},
 	}
 	tests := []compilerTestCase{
 		{
 			input: `fun (test Int Int) -> Int : 
 			(test x y) -> 0 .`,
-			expectedConstants: []interface{}{0},
-			expectedInstructions: []code.Instructions{
-				code.Make(code.OpMatch, 0, 14),
-				code.Make(code.OpMatch, 1, 14),
-				code.Make(code.OpConstant, 0),
-				code.Make(code.OpReturnValue),
-				code.Make(code.OpMatchFailed),
-			},
+			expectedConstants:    []interface{}{0, predef["int_int_simple"]},
+			expectedInstructions: []code.Instructions{},
 			expectedPatterns: []interface{}{
 				&pattern.VariablePattern{
 					Name: "x",
@@ -149,19 +167,11 @@ func TestPatterns(t *testing.T) {
 			fun (sum [List Int]) -> Int :
 			(sum [Cons x xs]) -> 1 |
 			(sum [Nil]) -> 0 .`,
-			expectedConstants: append(predefinedConstants["list_full"], []interface{}{1, 0}...), // 0 1 2 3
-			expectedInstructions: []code.Instructions{
-				code.Make(code.OpMatch, 0, 9),
-				code.Make(code.OpConstant, 2),
-				code.Make(code.OpReturnValue),
-				code.Make(code.OpMatch, 1, 18),
-				code.Make(code.OpConstant, 3),
-				code.Make(code.OpReturnValue),
-				code.Make(code.OpMatchFailed),
-			},
+			expectedConstants:    append(predef["list_full"], []interface{}{1, 0, predef["list_1_0"]}...), // 0 1 2 3
+			expectedInstructions: []code.Instructions{},
 			expectedPatterns: []interface{}{
 				&pattern.ConstructorPattern{
-					Constructor: predefinedConstants["list_full"][0].(*object.Constructor),
+					Constructor: predef["list_full"][0].(*object.Constructor),
 					Args: []pattern.Pattern{
 						&pattern.VariablePattern{
 							Name: "x",
@@ -172,8 +182,82 @@ func TestPatterns(t *testing.T) {
 					},
 				},
 				&pattern.ConstructorPattern{
-					Constructor: predefinedConstants["list_full"][1].(*object.Constructor),
+					Constructor: predef["list_full"][1].(*object.Constructor),
 					Args:        []pattern.Pattern{},
+				},
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
+func TestFunCall(t *testing.T) {
+	predef := map[string][]interface{}{
+		"list_nil": {
+			&object.Constructor{
+				Name:      "Nil",
+				Arity:     0,
+				Supertype: "List",
+			},
+		},
+		"list_full": {
+			&object.Constructor{
+				Name:      "Cons",
+				Arity:     2,
+				Supertype: "List",
+			},
+			&object.Constructor{
+				Name:      "Nil",
+				Arity:     0,
+				Supertype: "List",
+			},
+		},
+		"int_int_simple": {
+			&object.CompiledFunction{
+				Instructions: concatInstructions([]code.Instructions{
+					code.Make(code.OpMatch, 0, 14),
+					code.Make(code.OpMatch, 1, 14),
+					code.Make(code.OpConstant, 0),
+					code.Make(code.OpReturnValue),
+					code.Make(code.OpMatchFailed),
+				}),
+			},
+		},
+		"list_1_0": {
+			&object.CompiledFunction{
+				Instructions: concatInstructions([]code.Instructions{
+					code.Make(code.OpMatch, 0, 9),
+					code.Make(code.OpConstant, 2),
+					code.Make(code.OpReturnValue),
+					code.Make(code.OpMatch, 1, 18),
+					code.Make(code.OpConstant, 3),
+					code.Make(code.OpReturnValue),
+					code.Make(code.OpMatchFailed),
+				}),
+			},
+		},
+	}
+
+	tests := []compilerTestCase{
+		{
+			input: `fun (test Int Int) -> Int : 
+			(test x y) -> 0 .
+			
+			(test 2 3)`,
+			expectedConstants: []interface{}{0, predef["int_int_simple"], 2, 3},
+			expectedInstructions: []code.Instructions{
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpConstant, 3),
+				code.Make(code.OpCall, 2),
+			},
+			expectedPatterns: []interface{}{
+				&pattern.VariablePattern{
+					Name: "x",
+				},
+				&pattern.VariablePattern{
+					Name: "y",
 				},
 			},
 		},
@@ -219,6 +303,10 @@ func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 		err = testConstants(t, tt.expectedConstants, bytecode.Constants)
 		if err != nil {
 			t.Fatalf("testConstants failed: %s", err)
+		}
+		err = testPatterns(t, tt.expectedPatterns, bytecode.Patterns)
+		if err != nil {
+			t.Fatalf("testPatterns failed: %s", err)
 		}
 	}
 }
@@ -272,6 +360,11 @@ func testConstants(
 			if err != nil {
 				return fmt.Errorf("constant %d - testConstructorObject failed: %s", i, err)
 			}
+		case object.CompiledFunction:
+			err := testCompiledFunctionObject(object.CompiledFunction(constant), actual[i])
+			if err != nil {
+				return fmt.Errorf("constant %d - testCompiledFunctionObject failed: %s", i, err)
+			}
 		}
 	}
 
@@ -301,6 +394,25 @@ func testConstructorObject(expected object.Constructor, actual object.Object) er
 		result.Arity != expected.Arity ||
 		result.Supertype != expected.Supertype {
 		return fmt.Errorf("constructor has wrong fields. expected %+v\ngot %+v", expected, result)
+	}
+
+	return nil
+}
+
+func testCompiledFunctionObject(expected object.CompiledFunction, actual object.Object) error {
+	result, ok := actual.(*object.CompiledFunction)
+	if !ok {
+		return fmt.Errorf("object is not a c-function. got %T\n(%+v)", actual, actual)
+	}
+
+	if len(expected.Instructions) != len(result.Instructions) {
+		return fmt.Errorf("functions have wrong instructions length. expected %d, got %d", len(expected.Instructions), len(result.Instructions))
+	}
+
+	for i, _ := range expected.Instructions {
+		if expected.Instructions[i] != result.Instructions[i] {
+			return fmt.Errorf("functions have different instructions. \nexpected %+v\ngot %+v", expected.Instructions, result.Instructions)
+		}
 	}
 
 	return nil
