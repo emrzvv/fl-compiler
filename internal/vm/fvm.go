@@ -15,6 +15,7 @@ const StackSize = 2048
 type FVM struct {
 	constants []object.Object
 	patterns  []pattern.Pattern
+	variables []object.Object
 
 	frames      []*Frame
 	framesIndex int
@@ -46,6 +47,7 @@ func NewFVM(bytecode *compiler.Bytecode) *FVM {
 	return &FVM{
 		constants:   bytecode.Constants,
 		patterns:    bytecode.Patterns,
+		variables:   make([]object.Object, bytecode.VarAmount+1), // TODO: what len?
 		frames:      frames,
 		framesIndex: 1,
 		stack:       make([]object.Object, StackSize),
@@ -54,8 +56,8 @@ func NewFVM(bytecode *compiler.Bytecode) *FVM {
 }
 
 func (fvm *FVM) Run() error {
-	fmt.Println(fvm.currentFrame().Instructions().String())
-	fmt.Println("====================")
+	// fmt.Println(fvm.currentFrame().Instructions().String())
+	// fmt.Println("====================")
 
 	var ip int
 	var instructions code.Instructions
@@ -127,6 +129,24 @@ func (fvm *FVM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OpMatchFailed:
+			return fmt.Errorf("error when trying to match")
+		case code.OpMatch:
+			patternIdx := code.ReadUint16(instructions[ip+1:])
+			jumpIfFail := code.ReadUint16(instructions[ip+3:])
+			fvm.currentFrame().ip += 4
+
+			arg := fvm.pop()
+			err := fvm.currentFrame().push(arg)
+			if err != nil {
+				return err
+			}
+
+			pattern := fvm.patterns[patternIdx]
+			if pattern.Matches(arg) {
+				continue
+			}
+
 		}
 	}
 	return nil

@@ -169,7 +169,7 @@ type Expression struct {
 	FunCall         *FunCall         `@@`
 	ExprConstructor *ExprConstructor `| @@`
 	Const           *Const           `| @@`
-	Varaiable       string           `| @Ident`
+	Variable        string           `| @Ident`
 }
 
 func (e *Expression) String() string { return "tmp" }

@@ -8,6 +8,7 @@ import (
 	"github.com/emrzvv/fl-compiler/internal/compiler/code"
 	"github.com/emrzvv/fl-compiler/internal/types/object"
 	"github.com/emrzvv/fl-compiler/internal/types/pattern"
+	"github.com/emrzvv/fl-compiler/internal/utils"
 )
 
 type Compiler struct {
@@ -18,6 +19,10 @@ type Compiler struct {
 	patterns            []pattern.Pattern
 	patmatJumps         []int
 	matches             [][]int
+	varMapping          map[utils.Binding]int
+	varAmount           int
+	currentFun          string
+	currentRule         int
 }
 
 func NewCompiler() *Compiler {
@@ -29,6 +34,10 @@ func NewCompiler() *Compiler {
 		patterns:            []pattern.Pattern{},
 		patmatJumps:         []int{},
 		matches:             [][]int{},
+		varMapping:          make(map[utils.Binding]int),
+		varAmount:           0,
+		currentFun:          "",
+		currentRule:         0,
 	}
 }
 
@@ -90,8 +99,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.FunDef:
 		c.patmatJumps = make([]int, 0)
 		c.matches = make([][]int, 0)
+		c.currentFun = node.Signature.Name
+
 		begin := len(c.instructions)
-		for _, rule := range node.Rules {
+		for i, rule := range node.Rules {
+			c.currentRule = i
 			err := c.Compile(rule)
 			if err != nil {
 				return err
@@ -100,6 +112,9 @@ func (c *Compiler) Compile(node ast.Node) error {
 		end := c.emit(code.OpMatchFailed)
 		c.patmatJumps = append(c.patmatJumps, end)
 		c.patmatJumps = c.patmatJumps[1:]
+		for i, _ := range c.patmatJumps {
+			c.patmatJumps[i] -= (end - begin + 1)
+		}
 		c.setPatmatJumpingPoints()
 		emittedInstructions := make([]byte, end-begin+1)
 		copy(emittedInstructions, c.instructions[begin:end+1])
@@ -179,6 +194,18 @@ func (c *Compiler) Compile(node ast.Node) error {
 				return err
 			}
 		}
+		if node.Variable != "" {
+			key := utils.Binding{
+				FunName: c.currentFun,
+				VarName: node.Variable,
+				Branch:  c.currentRule,
+			}
+			index, ok := c.varMapping[key]
+			if !ok {
+				return fmt.Errorf("no such variable")
+			}
+			c.emit(code.OpVariable, index)
+		}
 		// TODO: Variable? emit OpGetBindings...
 	case *ast.Const:
 		number := &object.Integer{Value: int64(node.Number)}
@@ -199,8 +226,14 @@ func (c *Compiler) setPatmatJumpingPoints() error {
 
 func (c *Compiler) collectPattern(p *ast.PatternArgument) (pattern.Pattern, error) {
 	if p.Variable != "" {
+		key := utils.Binding{FunName: c.currentFun, VarName: p.Variable, Branch: c.currentRule}
+		c.varMapping[key] = c.varAmount
+		c.varAmount++
+
 		return &pattern.VariablePattern{
-			Name: p.Variable,
+			Name:      p.Variable,
+			FunName:   c.currentFun,
+			RuleIndex: c.currentRule,
 		}, nil
 	}
 	if p.Const != nil {
@@ -258,6 +291,7 @@ func (c *Compiler) Bytecode() *Bytecode {
 		Instructions: c.instructions,
 		Constants:    c.constants,
 		Patterns:     c.patterns,
+		VarAmount:    c.varAmount,
 	}
 }
 
@@ -265,4 +299,5 @@ type Bytecode struct {
 	Instructions code.Instructions
 	Constants    []object.Object
 	Patterns     []pattern.Pattern
+	VarAmount    int
 }
