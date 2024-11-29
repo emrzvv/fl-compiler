@@ -38,6 +38,7 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 			t.Fatalf("vm error: %s", err)
 		}
 		stackElem := vm.StackTop()
+		t.Logf("Stack Top Element\n%+v", stackElem)
 		testExpectedObject(t, tt.expected, stackElem)
 	}
 }
@@ -263,8 +264,8 @@ func TestFunCalls(t *testing.T) {
 							Supertype: "Tuple",
 						},
 						Args: []object.Object{
-							&object.Integer{Value: 3},
 							&object.Integer{Value: 1},
+							&object.Integer{Value: 3},
 						},
 					},
 					&object.Instance{
