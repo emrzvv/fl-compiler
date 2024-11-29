@@ -123,7 +123,9 @@ func (c *Compiler) Compile(node ast.Node) error {
 			matchPos := c.emit(code.OpMatch, patternIndex, 0)
 			matchesPositions = append(matchesPositions, matchPos)
 		}
-		c.patmatJumps = append(c.patmatJumps, matchesPositions[0])
+		if len(matchesPositions) > 0 {
+			c.patmatJumps = append(c.patmatJumps, matchesPositions[0])
+		}
 		c.matches = append(c.matches, matchesPositions)
 		c.Compile(expr)
 		c.emit(code.OpReturnValue)
@@ -147,15 +149,15 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 			c.emit(code.OpAdd, len(node.Arguments))
 		default:
-			name := node.Name
-			fIdx := c.functionsMapping[name]
-			c.emit(code.OpConstant, fIdx)
 			for _, arg := range node.Arguments {
 				err := c.Compile(arg)
 				if err != nil {
 					return err
 				}
 			}
+			name := node.Name
+			fIdx := c.functionsMapping[name]
+			c.emit(code.OpConstant, fIdx)
 			c.emit(code.OpCall, len(node.Arguments))
 		}
 	case *ast.Expression:

@@ -8,7 +8,7 @@ import (
 	"github.com/emrzvv/fl-compiler/internal/types/object"
 )
 
-const StackSize = 2048 // TODO: to config
+// const StackSize = 2048 // TODO: to config
 
 type VM struct {
 	constants    []object.Object
@@ -35,6 +35,8 @@ func (vm *VM) StackTop() object.Object {
 }
 
 func (vm *VM) Run() error {
+	fmt.Println(vm.instructions.String())
+	fmt.Println("===========================")
 	for ip := 0; ip < len(vm.instructions); ip++ {
 		op := code.OpCode(vm.instructions[ip])
 
@@ -79,6 +81,15 @@ func (vm *VM) Run() error {
 			}
 
 			vm.push(instance)
+			// case code.OpCall:
+			// 	argsAmount := code.ReadUint16(vm.instructions[ip+1:])
+			// 	for i := 0; i < int(argsAmount); i++ {
+
+			// 	}
+			// case code.OpMatch:
+			// 	patternIndex := code.ReadUint16(vm.instructions[ip+1:])
+			// 	jumpIndex := code.ReadUint16(vm.instructions[ip+3:])
+
 		}
 	}
 

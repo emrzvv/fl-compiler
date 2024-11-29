@@ -31,7 +31,8 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 		}
 		t.Logf("\n%+q", consts)
 		t.Logf("\n%s", comp.Bytecode().Instructions.String())
-		vm := NewVM(comp.Bytecode())
+		// vm := NewVM(comp.Bytecode())
+		vm := NewFVM(comp.Bytecode())
 		err = vm.Run()
 		if err != nil {
 			t.Fatalf("vm error: %s", err)
@@ -208,5 +209,18 @@ func TestExprConstructor(t *testing.T) {
 		},
 	}
 
+	runVmTests(t, tests)
+}
+
+func TestFunCalls(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			`fun (test) -> Int : 
+			(test) -> 0 .
+			
+			(test)`,
+			0,
+		},
+	}
 	runVmTests(t, tests)
 }
