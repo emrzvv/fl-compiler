@@ -136,7 +136,8 @@ func (c *Compiler) Compile(node ast.Node) error {
 		expr := node.Expression
 		matchesPositions := []int{}
 
-		for _, patternArg := range patternDef.Arguments {
+		for i := len(patternDef.Arguments) - 1; i >= 0; i-- {
+			patternArg := patternDef.Arguments[i]
 			pattern, err := c.collectPattern(patternArg)
 			if err != nil {
 				return err
@@ -213,6 +214,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 			if !ok {
 				return fmt.Errorf("no such variable")
 			}
+			fmt.Printf("PUSH VAR %s IDX %d\n", node.Variable, index)
 			c.emit(code.OpVariable, index)
 		}
 		// TODO: Variable? emit OpGetBindings...

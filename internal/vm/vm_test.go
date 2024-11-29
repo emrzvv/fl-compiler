@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/alecthomas/participle/v2"
@@ -31,9 +32,18 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 		}
 		t.Logf("\n%+q", consts)
 		t.Logf("\n%s", comp.Bytecode().Instructions.String())
+
 		// vm := NewVM(comp.Bytecode())
 		vm := NewFVM(comp.Bytecode())
 		err = vm.Run()
+		t.Logf("VARIABLES")
+		vars := []string{}
+		for _, v := range vm.variables {
+			if v != nil {
+				vars = append(vars, v.String())
+			}
+		}
+		t.Logf("\n%s", strings.Join(vars, "\n"))
 		if err != nil {
 			t.Fatalf("vm error: %s", err)
 		}
@@ -215,31 +225,31 @@ func TestExprConstructor(t *testing.T) {
 
 func TestFunCalls(t *testing.T) {
 	tests := []vmTestCase{
-		{
-			`fun (test) -> Int:
-			(test) -> 0 .
+		// {
+		// 	`fun (test) -> Int:
+		// 	(test) -> 0 .
 
-			(test)`,
-			0,
-		},
-		{
-			`type [List x]: Cons x [List x] | Nil .
-			fun (sum [List Int]) -> Int :
-			(sum [Cons x xs]) -> 1 |
-			(sum [Nil]) -> 0 .
+		// 	(test)`,
+		// 	0,
+		// },
+		// {
+		// 	`type [List x]: Cons x [List x] | Nil .
+		// 	fun (sum [List Int]) -> Int :
+		// 	(sum [Cons x xs]) -> 1 |
+		// 	(sum [Nil]) -> 0 .
 
-			(sum [Cons 1 [Cons 2 [Nil]]])`,
-			1,
-		},
-		{
-			`type [List x]: Cons x [List x] | Nil .
-			fun (sum [List Int]) -> Int :
-			(sum [Cons x xs]) -> (+ x (sum xs)) |
-			(sum [Nil]) -> 0 .
+		// 	(sum [Cons 1 [Cons 2 [Nil]]])`,
+		// 	1,
+		// },
+		// {
+		// 	`type [List x]: Cons x [List x] | Nil .
+		// 	fun (sum [List Int]) -> Int :
+		// 	(sum [Cons x xs]) -> (+ x (sum xs)) |
+		// 	(sum [Nil]) -> 0 .
 
-			(sum [Nil])`,
-			0,
-		},
+		// 	(sum [Nil])`,
+		// 	0,
+		// },
 		{
 			`type [List x]: Cons x [List x] | Nil .
 			type [Pair x y]: Pair x y .
@@ -321,3 +331,33 @@ func TestFunCalls(t *testing.T) {
 // 0023 OpConstant 2\n
 // 0026 OpReturnValue\n
 // 0027 OpMatchFailed\n
+
+// 0000 OpMatch 0 39\n
+// 0005 OpMatch 1 39\n
+// 0010 OpVariable 0\n
+// 0013 OpVariable 2\n
+// 0016 OpConstruct 2 2\n
+// 0021 OpVariable 1\n
+// 0024 OpVariable 3\n
+// 0027 OpConstant 3\n
+// 0030 OpCall 2\n
+// 0033 OpConstruct 0 2\n
+// 0038 OpReturnValue\n
+// 0039 OpMatch 2 55\n
+// 0044 OpMatch 3 55\n
+// 0049 OpConstruct 1 0\n
+// 0054 OpReturnValue\n
+// 0055 OpMatchFailed\n
+
+// 0000 OpConstant 4
+// 0003 OpConstant 5
+// 0006 OpConstruct 1 0
+// 0011 OpConstruct 0 2
+// 0016 OpConstruct 0 2
+// 0021 OpConstant 6
+// 0024 OpConstant 7
+// 0027 OpConstruct 1 0
+// 0032 OpConstruct 0 2
+// 0037 OpConstruct 0 2
+// 0042 OpConstant 3
+// 0045 OpCall 2

@@ -75,6 +75,7 @@ func (vp *VariablePattern) String() string {
 }
 
 func (vp *VariablePattern) Matches(obj object.Object, variables []object.Object) bool {
+	fmt.Printf("\n%s MATCHES? %s\n", vp.Name, obj.String())
 	variables[vp.Index] = obj
 	return true
 }

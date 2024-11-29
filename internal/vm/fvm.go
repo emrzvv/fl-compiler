@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/emrzvv/fl-compiler/internal/compiler"
 	"github.com/emrzvv/fl-compiler/internal/compiler/code"
@@ -102,7 +103,18 @@ func (fvm *FVM) Run() error {
 			index := code.ReadUint16(instructions[ip+1:])
 			arity := code.ReadUint16(instructions[ip+3:])
 			fvm.currentFrame().ip += 4
-
+			fmt.Println("============\nSTACK BEFORE OPCONSTRUCT")
+			for i := 0; i < fvm.sp; i++ {
+				fmt.Printf("%+v\n", fvm.stack[i])
+			}
+			fmt.Printf("VARIABLES\n")
+			vars := []string{}
+			for _, v := range fvm.variables {
+				if v != nil {
+					vars = append(vars, v.String())
+				}
+			}
+			fmt.Printf("\n%s\n=============\n", strings.Join(vars, "\n"))
 			constructor, ok := fvm.constants[index].(*object.Constructor)
 			if !ok { // TODO: validation?
 				return fmt.Errorf("error when exctracting constructor type from constant pull")
@@ -111,7 +123,13 @@ func (fvm *FVM) Run() error {
 			for i := int(arity) - 1; i >= 0; i-- {
 				args[i] = fvm.pop()
 			}
-
+			aa := []string{}
+			for _, a := range args {
+				aa = append(aa, a.String())
+			}
+			fmt.Printf("ARGS FOR CONSTRUCTOR %d\n", index)
+			fmt.Printf("\n%s", strings.Join(aa, "\n"))
+			fmt.Println("============")
 			instance := &object.Instance{
 				Constructor: constructor,
 				Args:        args,
@@ -153,8 +171,13 @@ func (fvm *FVM) Run() error {
 			if err != nil {
 				return err
 			}
-
+			fmt.Println("CURRENT STACK")
+			for i := 0; i < fvm.sp; i++ {
+				fmt.Printf("%s\n", fvm.stack[i].String())
+			}
+			fmt.Println("--------------")
 			pattern := fvm.patterns[patternIdx]
+			fmt.Printf("\nARG %s\n", arg.String())
 			if pattern.Matches(arg, fvm.variables) {
 				continue
 			}
