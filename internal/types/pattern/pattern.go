@@ -18,7 +18,7 @@ const (
 type Pattern interface {
 	Type() PatternType
 	String() string
-	Matches(obj object.Object) bool
+	Matches(obj object.Object, variables []object.Object) bool
 }
 
 type ConstructorPattern struct {
@@ -38,15 +38,16 @@ func (cp *ConstructorPattern) String() string {
 	return fmt.Sprintf("Constructor Pattern %s(%s)", cp.Constructor.Name, strings.Join(args, ", "))
 }
 
-func (cp *ConstructorPattern) Matches(obj object.Object) bool {
+func (cp *ConstructorPattern) Matches(obj object.Object, variables []object.Object) bool {
 	switch obj := obj.(type) {
 	case *object.Instance:
+		fmt.Println("MATCHING OBJECT INSTANCE")
 		if cp.Constructor.Name == obj.Constructor.Name &&
 			cp.Constructor.Arity == obj.Constructor.Arity &&
 			cp.Constructor.Supertype == obj.Constructor.Supertype {
 
 			for i, _ := range cp.Args {
-				if !cp.Args[i].Matches(obj.Args[i]) {
+				if !cp.Args[i].Matches(obj.Args[i], variables) {
 					return false
 				}
 			}
@@ -55,6 +56,7 @@ func (cp *ConstructorPattern) Matches(obj object.Object) bool {
 	default:
 		return false
 	}
+
 	return false
 }
 
@@ -62,6 +64,7 @@ type VariablePattern struct {
 	Name      string
 	FunName   string
 	RuleIndex int
+	Index     int
 }
 
 func (vp *VariablePattern) Type() PatternType {
@@ -72,8 +75,8 @@ func (vp *VariablePattern) String() string {
 	return fmt.Sprintf("%s %s %d", vp.Name, vp.FunName, vp.RuleIndex)
 }
 
-func (vp *VariablePattern) Matches(obj object.Object) bool {
-
+func (vp *VariablePattern) Matches(obj object.Object, variables []object.Object) bool {
+	variables[vp.Index] = obj
 	return true
 }
 
@@ -89,7 +92,7 @@ func (cp *ConstPattern) String() string {
 	return (*cp.Const).String()
 }
 
-func (cp *ConstPattern) Matches(obj object.Object) bool {
+func (cp *ConstPattern) Matches(obj object.Object, variables []object.Object) bool {
 	result, ok := obj.(*object.Integer)
 	return ok && result.Value == cp.Const.Value
 }

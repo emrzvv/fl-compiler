@@ -42,7 +42,7 @@ func (cf *CompiledFunction) Type() ObjectType {
 }
 
 func (cf *CompiledFunction) String() string {
-	return fmt.Sprintf("CompiledFunction[%p]", cf)
+	return fmt.Sprintf("CompiledFunction[%s]", cf.Instructions.String())
 }
 
 type Constructor struct {

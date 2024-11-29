@@ -77,6 +77,13 @@ func (fvm *FVM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OpVariable:
+			variableIndex := code.ReadUint16(instructions[ip+1:])
+			fvm.currentFrame().ip += 2
+			err := fvm.push(fvm.variables[variableIndex])
+			if err != nil {
+				return err
+			}
 		case code.OpAdd:
 			amount := code.ReadUint16(instructions[ip+1:])
 			fvm.currentFrame().ip += 2
@@ -119,16 +126,17 @@ func (fvm *FVM) Run() error {
 				return fmt.Errorf("error when trying to call function")
 			}
 			frame := NewFrame(function, int(argsAmount))
+			fvm.pop() // pop function object
 			fvm.pushFrame(frame)
 		case code.OpReturnValue:
-			value := fvm.pop()
-			fvm.popFrame()
-			fvm.pop()
+			// value := fvm.pop()
 
-			err := fvm.push(value)
-			if err != nil {
-				return err
-			}
+			fvm.popFrame()
+
+			// err := fvm.push(value)
+			// if err != nil {
+			// 	return err
+			// }
 		case code.OpMatchFailed:
 			return fmt.Errorf("error when trying to match")
 		case code.OpMatch:
@@ -143,10 +151,13 @@ func (fvm *FVM) Run() error {
 			}
 
 			pattern := fvm.patterns[patternIdx]
-			if pattern.Matches(arg) {
+			if pattern.Matches(arg, fvm.variables) {
 				continue
 			}
-
+			for fvm.currentFrame().sp > 0 {
+				fvm.push(fvm.currentFrame().pop())
+			}
+			fvm.currentFrame().ip = int(jumpIfFail)
 		}
 	}
 	return nil

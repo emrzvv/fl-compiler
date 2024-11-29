@@ -214,13 +214,47 @@ func TestExprConstructor(t *testing.T) {
 
 func TestFunCalls(t *testing.T) {
 	tests := []vmTestCase{
+		// {
+		// 	`fun (test) -> Int :
+		// 	(test) -> 0 .
+
+		// 	(test)`,
+		// 	0,
+		// },
 		{
-			`fun (test) -> Int : 
-			(test) -> 0 .
+			`type [List x]: Cons x [List x] | Nil .
+			fun (sum [List Int]) -> Int :
+			(sum [Cons x xs]) -> 1 |
+			(sum [Nil]) -> 0 .
 			
-			(test)`,
-			0,
+			(sum [Cons 1 [Cons 2 [Nil]]])`,
+			1,
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			fun (sum [List Int]) -> Int :
+			(sum [Cons x xs]) -> (+ x (sum xs)) |
+			(sum [Nil]) -> 0 .
+			
+			(sum [Cons 1 [Cons 2 [Nil]]])`,
+			3,
 		},
 	}
 	runVmTests(t, tests)
 }
+
+// 0000 OpMatch 0 65527\n
+// 0005 OpConstant 2\n
+// 0008 OpReturnValue\n
+// 0009 OpMatch 1 0\n
+// 0014 OpConstant 3\n
+// 0017 OpReturnValue\n
+// 0018 OpMatchFailed\n
+
+// 0000 OpMatch 0 9\n
+// 0005 OpConstant 2\n
+// 0008 OpReturnValue\n
+// 0009 OpMatch 1 18\n
+// 0014 OpConstant 3\n
+// 0017 OpReturnValue\n
+// 0018 OpMatchFailed\n

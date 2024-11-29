@@ -17,7 +17,13 @@ type Frame struct {
 }
 
 func NewFrame(fn *object.CompiledFunction, argsAmount int) *Frame {
-	return &Frame{fn: fn, ip: -1, ArgsAmount: argsAmount}
+	return &Frame{
+		fn:         fn,
+		ip:         -1,
+		ArgsAmount: argsAmount,
+		stack:      make([]object.Object, StackSize),
+		sp:         0,
+	}
 }
 
 func (f *Frame) Instructions() code.Instructions {

@@ -113,7 +113,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.patmatJumps = append(c.patmatJumps, end)
 		c.patmatJumps = c.patmatJumps[1:]
 		for i, _ := range c.patmatJumps {
-			c.patmatJumps[i] -= (end - begin + 1)
+			c.patmatJumps[i] -= begin
 		}
 		c.setPatmatJumpingPoints()
 		emittedInstructions := make([]byte, end-begin+1)
@@ -234,6 +234,7 @@ func (c *Compiler) collectPattern(p *ast.PatternArgument) (pattern.Pattern, erro
 			Name:      p.Variable,
 			FunName:   c.currentFun,
 			RuleIndex: c.currentRule,
+			Index:     c.varAmount - 1,
 		}, nil
 	}
 	if p.Const != nil {
