@@ -29,7 +29,7 @@ type Definition struct {
 	FunDef  *FunDef  `| @@`
 	FunCall *FunCall `| @@`
 	// TODO: REMOVE
-	ExprConstructor *ExprConstructor `| @@`
+	// ExprConstructor *ExprConstructor `| @@`
 }
 
 func (d *Definition) String() string { return "tmp" }

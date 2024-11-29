@@ -64,12 +64,12 @@ func (c *Compiler) Compile(node ast.Node) error {
 				}
 			}
 			// TODO: everything below - to remove
-			if d.ExprConstructor != nil {
-				err := c.Compile(d.ExprConstructor)
-				if err != nil {
-					return err
-				}
-			}
+			// if d.ExprConstructor != nil {
+			// 	err := c.Compile(d.ExprConstructor)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// }
 		}
 	case *ast.TypeDef:
 		for _, alt := range node.TypeAlternatives {
@@ -100,9 +100,17 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.patmatJumps = make([]int, 0)
 		c.matches = make([][]int, 0)
 		c.currentFun = node.Signature.Name
-
+		// fmt.Println(node.Signature.Name)
+		// fmt.Printf("%+v", node.Rules)
 		begin := len(c.instructions)
+		// fmt.Println(len(node.Rules))
+		reservedIndex := c.addConstant(&object.CompiledFunction{
+			Instructions: code.Instructions{},
+		})
+
+		c.functionsMapping[node.Signature.Name] = reservedIndex
 		for i, rule := range node.Rules {
+			fmt.Printf("compiling rule %d", i)
 			c.currentRule = i
 			err := c.Compile(rule)
 			if err != nil {
@@ -121,9 +129,8 @@ func (c *Compiler) Compile(node ast.Node) error {
 		compiledFunction := &object.CompiledFunction{
 			Instructions: emittedInstructions,
 		}
+		c.constants[reservedIndex] = compiledFunction
 		c.instructions = c.instructions[:begin]
-		index := c.addConstant(compiledFunction)
-		c.functionsMapping[node.Signature.Name] = index
 	case *ast.FunRule:
 		patternDef := node.Pattern
 		expr := node.Expression
@@ -172,6 +179,8 @@ func (c *Compiler) Compile(node ast.Node) error {
 			}
 			name := node.Name
 			fIdx := c.functionsMapping[name]
+			// fmt.Printf("%+v", c.functionsMapping)
+			// fmt.Printf("function %s idx %d", name, fIdx)
 			c.emit(code.OpConstant, fIdx)
 			c.emit(code.OpCall, len(node.Arguments))
 		}

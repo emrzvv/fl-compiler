@@ -214,19 +214,19 @@ func TestExprConstructor(t *testing.T) {
 
 func TestFunCalls(t *testing.T) {
 	tests := []vmTestCase{
-		// {
-		// 	`fun (test) -> Int :
-		// 	(test) -> 0 .
+		{
+			`fun (test) -> Int:
+			(test) -> 0 .
 
-		// 	(test)`,
-		// 	0,
-		// },
+			(test)`,
+			0,
+		},
 		{
 			`type [List x]: Cons x [List x] | Nil .
 			fun (sum [List Int]) -> Int :
 			(sum [Cons x xs]) -> 1 |
 			(sum [Nil]) -> 0 .
-			
+
 			(sum [Cons 1 [Cons 2 [Nil]]])`,
 			1,
 		},
@@ -235,21 +235,72 @@ func TestFunCalls(t *testing.T) {
 			fun (sum [List Int]) -> Int :
 			(sum [Cons x xs]) -> (+ x (sum xs)) |
 			(sum [Nil]) -> 0 .
+
+			(sum [Nil])`,
+			0,
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			type [Pair x y]: Pair x y .
+
+			fun (zip [List x] [List y]) -> [List [Pair x y]] :
+			(zip [Cons x xs] [Cons y ys]) -> [Cons [Pair x y] (zip xs ys)] |
+			(zip xs ys) -> [Nil] . 
 			
-			(sum [Cons 1 [Cons 2 [Nil]]])`,
-			3,
+			(zip [Cons 1 [Cons 2 [Nil]]] [Cons 3 [Cons 4 [Nil]]])
+			`,
+			&object.Instance{
+				Constructor: &object.Constructor{
+					Name:      "Cons",
+					Arity:     2,
+					Supertype: "List",
+				},
+				Args: []object.Object{
+					&object.Instance{
+						Constructor: &object.Constructor{
+							Name:      "Pair",
+							Arity:     2,
+							Supertype: "Tuple",
+						},
+						Args: []object.Object{
+							&object.Integer{Value: 3},
+							&object.Integer{Value: 1},
+						},
+					},
+					&object.Instance{
+						Constructor: &object.Constructor{
+							Name:      "Cons",
+							Arity:     2,
+							Supertype: "List",
+						},
+						Args: []object.Object{
+							&object.Instance{
+								Constructor: &object.Constructor{
+									Name:      "Pair",
+									Arity:     2,
+									Supertype: "Tuple",
+								},
+								Args: []object.Object{
+									&object.Integer{Value: 2},
+									&object.Integer{Value: 4},
+								},
+							},
+							&object.Instance{
+								Constructor: &object.Constructor{
+									Name:      "Nil",
+									Arity:     0,
+									Supertype: "List",
+								},
+								Args: []object.Object{},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 	runVmTests(t, tests)
 }
-
-// 0000 OpMatch 0 65527\n
-// 0005 OpConstant 2\n
-// 0008 OpReturnValue\n
-// 0009 OpMatch 1 0\n
-// 0014 OpConstant 3\n
-// 0017 OpReturnValue\n
-// 0018 OpMatchFailed\n
 
 // 0000 OpMatch 0 9\n
 // 0005 OpConstant 2\n
@@ -258,3 +309,14 @@ func TestFunCalls(t *testing.T) {
 // 0014 OpConstant 3\n
 // 0017 OpReturnValue\n
 // 0018 OpMatchFailed\n
+
+// 0000 OpMatch 0 18\n
+// 0005 OpVariable 1\n
+// 0008 OpConstant 0\n
+// 0011 OpCall 1\n
+// 0014 OpAdd 2\n
+// 0017 OpReturnValue\n
+// 0018 OpMatch 1 27\n
+// 0023 OpConstant 2\n
+// 0026 OpReturnValue\n
+// 0027 OpMatchFailed\n

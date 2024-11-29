@@ -56,8 +56,8 @@ func NewFVM(bytecode *compiler.Bytecode) *FVM {
 }
 
 func (fvm *FVM) Run() error {
-	// fmt.Println(fvm.currentFrame().Instructions().String())
-	// fmt.Println("====================")
+	fmt.Println(fvm.currentFrame().Instructions().String())
+	fmt.Println("====================")
 
 	var ip int
 	var instructions code.Instructions
@@ -68,11 +68,12 @@ func (fvm *FVM) Run() error {
 		ip = fvm.currentFrame().ip
 		instructions = fvm.currentFrame().Instructions()
 		op = code.OpCode(instructions[ip])
-
+		// fmt.Printf("%d %d\n", ip, op)
 		switch op {
 		case code.OpConstant:
 			constIndex := code.ReadUint16(instructions[ip+1:])
 			fvm.currentFrame().ip += 2
+			// fmt.Printf("constIndex: %d %d", constIndex, ip)
 			err := fvm.push(fvm.constants[constIndex])
 			if err != nil {
 				return err
@@ -120,7 +121,10 @@ func (fvm *FVM) Run() error {
 		case code.OpCall:
 			argsAmount := code.ReadUint16(instructions[ip+1:])
 			fvm.currentFrame().ip += 2
-
+			fmt.Println("STACK BEFORE OPCALL")
+			for i := 0; i < fvm.sp; i++ {
+				fmt.Printf("%+v\n", fvm.stack[i])
+			}
 			function, ok := fvm.stack[fvm.sp-1].(*object.CompiledFunction)
 			if !ok {
 				return fmt.Errorf("error when trying to call function")
@@ -157,7 +161,7 @@ func (fvm *FVM) Run() error {
 			for fvm.currentFrame().sp > 0 {
 				fvm.push(fvm.currentFrame().pop())
 			}
-			fvm.currentFrame().ip = int(jumpIfFail)
+			fvm.currentFrame().ip = int(jumpIfFail) - 1
 		}
 	}
 	return nil

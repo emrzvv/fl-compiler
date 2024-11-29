@@ -41,7 +41,6 @@ func (cp *ConstructorPattern) String() string {
 func (cp *ConstructorPattern) Matches(obj object.Object, variables []object.Object) bool {
 	switch obj := obj.(type) {
 	case *object.Instance:
-		fmt.Println("MATCHING OBJECT INSTANCE")
 		if cp.Constructor.Name == obj.Constructor.Name &&
 			cp.Constructor.Arity == obj.Constructor.Arity &&
 			cp.Constructor.Supertype == obj.Constructor.Supertype {
