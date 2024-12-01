@@ -33,7 +33,6 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 		t.Logf("\n%+q", consts)
 		t.Logf("\n%s", comp.Bytecode().Instructions.String())
 
-		// vm := NewVM(comp.Bytecode())
 		vm := NewFVM(comp.Bytecode())
 		err = vm.Run()
 		t.Logf("VARIABLES")
@@ -60,13 +59,18 @@ func testExpectedObject(
 ) {
 	t.Helper()
 	switch expected := expected.(type) {
+	case *object.Integer:
+		err := testIntegerObject(t, expected.Value, actual)
+		if err != nil {
+			t.Errorf("testIntegerObject failed: %s", err)
+		}
 	case int:
 		err := testIntegerObject(t, int64(expected), actual)
 		if err != nil {
 			t.Errorf("testIntegerObject failed: %s", err)
 		}
-	case object.Instance:
-		err := testInstanceObject(t, expected, actual)
+	case *object.Instance:
+		err := testInstanceObject(t, *expected, actual)
 		if err != nil {
 			t.Errorf("testInstanceObject failed: %s", err)
 		}
@@ -113,6 +117,7 @@ func testInstanceObject(
 	expected object.Instance,
 	actual object.Object) error {
 	result, ok := actual.(*object.Instance)
+	t.Logf("TESTING INSTANCE OBJECT %+v \n%+v", expected, actual)
 	if !ok {
 		return fmt.Errorf("object is not instance. got %T (%+v)", actual, actual)
 	}
@@ -224,85 +229,242 @@ func TestExprConstructor(t *testing.T) {
 }
 
 func TestFunCalls(t *testing.T) {
+	Cons := &object.Constructor{
+		Name:      "Cons",
+		Arity:     2,
+		Supertype: "List",
+	}
+	Nil := &object.Constructor{
+		Name:      "Nil",
+		Arity:     0,
+		Supertype: "List",
+	}
+	Pair := &object.Constructor{
+		Name:      "Pair",
+		Arity:     2,
+		Supertype: "Pair",
+	}
+	B := &object.Constructor{
+		Name:      "B",
+		Arity:     0,
+		Supertype: "Letter",
+	}
+	C := &object.Constructor{
+		Name:      "C",
+		Arity:     0,
+		Supertype: "Letter",
+	}
 	tests := []vmTestCase{
-		// {
-		// 	`fun (test) -> Int:
-		// 	(test) -> 0 .
+		{
+			`fun (test) -> Int:
+			(test) -> 0 .
 
-		// 	(test)`,
-		// 	0,
-		// },
-		// {
-		// 	`type [List x]: Cons x [List x] | Nil .
-		// 	fun (sum [List Int]) -> Int :
-		// 	(sum [Cons x xs]) -> 1 |
-		// 	(sum [Nil]) -> 0 .
+			(test)`,
+			0,
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			fun (sum [List Int]) -> Int :
+			(sum [Cons x xs]) -> 1 |
+			(sum [Nil]) -> 0 .
 
-		// 	(sum [Cons 1 [Cons 2 [Nil]]])`,
-		// 	1,
-		// },
-		// {
-		// 	`type [List x]: Cons x [List x] | Nil .
-		// 	fun (sum [List Int]) -> Int :
-		// 	(sum [Cons x xs]) -> (+ x (sum xs)) |
-		// 	(sum [Nil]) -> 0 .
+			(sum [Cons 1 [Cons 2 [Nil]]])`,
+			1,
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			fun (sum [List Int]) -> Int :
+			(sum [Cons x xs]) -> (+ x (sum xs)) |
+			(sum [Nil]) -> 0 .
 
-		// 	(sum [Nil])`,
-		// 	0,
-		// },
+			(sum [Nil])`,
+			0,
+		},
 		{
 			`type [List x]: Cons x [List x] | Nil .
 			type [Pair x y]: Pair x y .
 
 			fun (zip [List x] [List y]) -> [List [Pair x y]] :
 			(zip [Cons x xs] [Cons y ys]) -> [Cons [Pair x y] (zip xs ys)] |
-			(zip xs ys) -> [Nil] . 
-			
+			(zip xs ys) -> [Nil] .
+
 			(zip [Cons 1 [Cons 2 [Nil]]] [Cons 3 [Cons 4 [Nil]]])
 			`,
 			&object.Instance{
-				Constructor: &object.Constructor{
-					Name:      "Cons",
-					Arity:     2,
-					Supertype: "List",
-				},
+				Constructor: Cons,
 				Args: []object.Object{
 					&object.Instance{
-						Constructor: &object.Constructor{
-							Name:      "Pair",
-							Arity:     2,
-							Supertype: "Tuple",
-						},
+						Constructor: Pair,
 						Args: []object.Object{
 							&object.Integer{Value: 1},
 							&object.Integer{Value: 3},
 						},
 					},
 					&object.Instance{
-						Constructor: &object.Constructor{
-							Name:      "Cons",
-							Arity:     2,
-							Supertype: "List",
-						},
+						Constructor: Cons,
 						Args: []object.Object{
 							&object.Instance{
-								Constructor: &object.Constructor{
-									Name:      "Pair",
-									Arity:     2,
-									Supertype: "Tuple",
-								},
+								Constructor: Pair,
 								Args: []object.Object{
 									&object.Integer{Value: 2},
 									&object.Integer{Value: 4},
 								},
 							},
 							&object.Instance{
-								Constructor: &object.Constructor{
-									Name:      "Nil",
-									Arity:     0,
-									Supertype: "List",
+								Constructor: Nil,
+								Args:        []object.Object{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			type [Pair x y]: Pair x y .
+
+			fun (append [List x] [List x]) -> [List x] :
+				(append [Cons x xs] ys) -> [Cons x (append xs ys)] |
+				(append [Nil] ys) -> ys .
+
+			(append [Nil] [Cons 1 [Cons 2 [Nil]]])`,
+			&object.Instance{
+				Constructor: Cons,
+				Args: []object.Object{
+					&object.Integer{
+						Value: 1,
+					},
+					&object.Instance{
+						Constructor: Cons,
+						Args: []object.Object{
+							&object.Integer{
+								Value: 2,
+							},
+							&object.Instance{
+								Constructor: Nil,
+								Args:        []object.Object{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			type [Pair x y]: Pair x y .
+
+			fun (flatten [List [List x]]) -> [List x]:
+				(flatten [Cons [Cons x xs] xss]) -> [Cons x (flatten [Cons xs xss])] |
+				(flatten [Cons [Nil] xss]) -> (flatten xss) | 
+				(flatten [Nil]) -> [Nil] .
+
+			(flatten [Cons [Cons 1 [Cons 2 [Nil]]] [Cons [Cons 3 [Cons 4 [Nil]]] [Nil]]]) 
+			`, // [[1, 2], [3, 4]]
+			&object.Instance{
+				Constructor: Cons,
+				Args: []object.Object{
+					&object.Integer{Value: 1},
+					&object.Instance{
+						Constructor: Cons,
+						Args: []object.Object{
+							&object.Integer{Value: 2},
+							&object.Instance{
+								Constructor: Cons,
+								Args: []object.Object{
+									&object.Integer{Value: 3},
+									&object.Instance{
+										Constructor: Cons,
+										Args: []object.Object{
+											&object.Integer{Value: 4},
+											&object.Instance{
+												Constructor: Nil,
+												Args:        []object.Object{},
+											},
+										},
+									},
 								},
-								Args: []object.Object{},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			type [Letter]: A | B | C | D .
+			
+			fun (fab [List Letter]) -> [List Letter] :
+				(fab [Cons [A] xs]) -> [Cons [B] (fab xs)] |
+				(fab [Cons x xs]) -> [Cons x (fab xs)] |
+				(fab [Nil]) -> [Nil] .
+
+			(fab [Cons [A] [Cons [B] [Cons [A] [Cons [A] [Nil]]]]])
+			`,
+			&object.Instance{
+				Constructor: Cons,
+				Args: []object.Object{
+					&object.Instance{Constructor: B, Args: []object.Object{}},
+					&object.Instance{
+						Constructor: Cons,
+						Args: []object.Object{
+							&object.Instance{Constructor: B, Args: []object.Object{}},
+							&object.Instance{
+								Constructor: Cons,
+								Args: []object.Object{
+									&object.Instance{Constructor: B, Args: []object.Object{}},
+									&object.Instance{
+										Constructor: Cons,
+										Args: []object.Object{
+											&object.Instance{Constructor: B, Args: []object.Object{}},
+											&object.Instance{Constructor: Nil, Args: []object.Object{}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			`type [List x]: Cons x [List x] | Nil .
+			type [Letter]: A | B | C | D .
+			
+			fun (fab [List Letter]) -> [List Letter] :
+				(fab [Cons [A] xs]) -> [Cons [B] (fab xs)] |
+				(fab [Cons x xs]) -> [Cons x (fab xs)] |
+				(fab [Nil]) -> [Nil] .
+				
+			fun (fbc [List Letter]) -> [List Letter] :
+				(fbc [Cons [B] xs]) -> [Cons [C] (fbc xs)] |
+				(fbc [Cons x xs]) -> [Cons x (fbc xs)] |
+				(fbc [Nil]) -> [Nil] .
+			
+			fun (fabc [List Letter]) -> [List Letter] :
+				(fabc xs) -> (fbc (fab xs)) .
+
+			(fabc [Cons [A] [Cons [B] [Cons [A] [Cons [C] [Nil]]]]])
+			`,
+			&object.Instance{
+				Constructor: Cons,
+				Args: []object.Object{
+					&object.Instance{Constructor: C, Args: []object.Object{}},
+					&object.Instance{
+						Constructor: Cons,
+						Args: []object.Object{
+							&object.Instance{Constructor: C, Args: []object.Object{}},
+							&object.Instance{
+								Constructor: Cons,
+								Args: []object.Object{
+									&object.Instance{Constructor: C, Args: []object.Object{}},
+									&object.Instance{
+										Constructor: Cons,
+										Args: []object.Object{
+											&object.Instance{Constructor: C, Args: []object.Object{}},
+											&object.Instance{Constructor: Nil, Args: []object.Object{}},
+										},
+									},
+								},
 							},
 						},
 					},
