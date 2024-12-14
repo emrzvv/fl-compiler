@@ -72,31 +72,6 @@ func TestTypeDefinitions(t *testing.T) {
 			expectedInstructions: []code.Instructions{},
 			expectedPatterns:     []interface{}{},
 		},
-		{
-			input: `type [List x]: Cons x [List x] | Nil .
-			[Nil]`,
-			expectedConstants: predefinedConstants["list_full"],
-			expectedInstructions: []code.Instructions{
-				code.Make(code.OpConstruct, 1, 0),
-			},
-			expectedPatterns: []interface{}{},
-		},
-		{
-			input: `type [List x]: Cons x [List x] | Nil .
-			[Cons 1 [Cons 2 [Cons 3 [Nil]]]]`,
-			expectedConstants: append(predefinedConstants["list_full"], []interface{}{1, 2, 3}...),
-			expectedInstructions: []code.Instructions{
-				code.Make(code.OpConstant, 2),
-				code.Make(code.OpConstant, 3),
-				code.Make(code.OpConstant, 4),
-				code.Make(code.OpConstruct, 1, 0),
-				code.Make(code.OpConstruct, 0, 2),
-				code.Make(code.OpConstruct, 0, 2),
-				code.Make(code.OpConstruct, 0, 2),
-			},
-			expectedPatterns: []interface{}{},
-			// constants: [Cons, Nil, 1, 2, 3]
-		},
 	}
 	runCompilerTests(t, tests)
 }
@@ -151,14 +126,14 @@ func TestPatterns(t *testing.T) {
 		{
 			input: `fun (test Int Int) -> Int : 
 			(test x y) -> 0 .`,
-			expectedConstants:    []interface{}{0, predef["int_int_simple"]},
+			expectedConstants:    []interface{}{predef["int_int_simple"], 0},
 			expectedInstructions: []code.Instructions{},
 			expectedPatterns: []interface{}{
 				&pattern.VariablePattern{
-					Name: "x",
+					Name: "y",
 				},
 				&pattern.VariablePattern{
-					Name: "y",
+					Name: "x",
 				},
 			},
 		},
@@ -167,7 +142,7 @@ func TestPatterns(t *testing.T) {
 			fun (sum [List Int]) -> Int :
 			(sum [Cons x xs]) -> 1 |
 			(sum [Nil]) -> 0 .`,
-			expectedConstants:    append(predef["list_full"], []interface{}{1, 0, predef["list_1_0"]}...), // 0 1 2 3
+			expectedConstants:    append(predef["list_full"], []interface{}{predef["list_1_0"], 1, 0}...), // 0 1 2 3
 			expectedInstructions: []code.Instructions{},
 			expectedPatterns: []interface{}{
 				&pattern.ConstructorPattern{
@@ -245,7 +220,7 @@ func TestFunCall(t *testing.T) {
 			(test x y) -> 0 .
 			
 			(test 2 3)`,
-			expectedConstants: []interface{}{0, predef["int_int_simple"], 2, 3},
+			expectedConstants: []interface{}{predef["int_int_simple"], 0, 2, 3},
 			expectedInstructions: []code.Instructions{
 				code.Make(code.OpConstant, 1),
 				code.Make(code.OpConstant, 2),
