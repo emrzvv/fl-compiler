@@ -355,10 +355,10 @@ func TestFunCalls(t *testing.T) {
 
 			fun (flatten [List [List x]]) -> [List x]:
 				(flatten [Cons [Cons x xs] xss]) -> [Cons x (flatten [Cons xs xss])] |
-				(flatten [Cons [Nil] xss]) -> (flatten xss) | 
+				(flatten [Cons [Nil] xss]) -> (flatten xss) |
 				(flatten [Nil]) -> [Nil] .
 
-			(flatten [Cons [Cons 1 [Cons 2 [Nil]]] [Cons [Cons 3 [Cons 4 [Nil]]] [Nil]]]) 
+			(flatten [Cons [Cons 1 [Cons 2 [Nil]]] [Cons [Cons 3 [Cons 4 [Nil]]] [Nil]]])
 			`, // [[1, 2], [3, 4]]
 			&object.Instance{
 				Constructor: Cons,
@@ -392,7 +392,7 @@ func TestFunCalls(t *testing.T) {
 		{
 			`type [List x]: Cons x [List x] | Nil .
 			type [Letter]: A | B | C | D .
-			
+
 			fun (fab [List Letter]) -> [List Letter] :
 				(fab [Cons [A] xs]) -> [Cons [B] (fab xs)] |
 				(fab [Cons x xs]) -> [Cons x (fab xs)] |
@@ -429,17 +429,17 @@ func TestFunCalls(t *testing.T) {
 		{
 			`type [List x]: Cons x [List x] | Nil .
 			type [Letter]: A | B | C | D .
-			
+
 			fun (fab [List Letter]) -> [List Letter] :
 				(fab [Cons [A] xs]) -> [Cons [B] (fab xs)] |
 				(fab [Cons x xs]) -> [Cons x (fab xs)] |
 				(fab [Nil]) -> [Nil] .
-				
+
 			fun (fbc [List Letter]) -> [List Letter] :
 				(fbc [Cons [B] xs]) -> [Cons [C] (fbc xs)] |
 				(fbc [Cons x xs]) -> [Cons x (fbc xs)] |
 				(fbc [Nil]) -> [Nil] .
-			
+
 			fun (fabc [List Letter]) -> [List Letter] :
 				(fabc xs) -> (fbc (fab xs)) .
 
@@ -474,52 +474,3 @@ func TestFunCalls(t *testing.T) {
 	}
 	runVmTests(t, tests)
 }
-
-// 0000 OpMatch 0 9\n
-// 0005 OpConstant 2\n
-// 0008 OpReturnValue\n
-// 0009 OpMatch 1 18\n
-// 0014 OpConstant 3\n
-// 0017 OpReturnValue\n
-// 0018 OpMatchFailed\n
-
-// 0000 OpMatch 0 18\n
-// 0005 OpVariable 1\n
-// 0008 OpConstant 0\n
-// 0011 OpCall 1\n
-// 0014 OpAdd 2\n
-// 0017 OpReturnValue\n
-// 0018 OpMatch 1 27\n
-// 0023 OpConstant 2\n
-// 0026 OpReturnValue\n
-// 0027 OpMatchFailed\n
-
-// 0000 OpMatch 0 39\n
-// 0005 OpMatch 1 39\n
-// 0010 OpVariable 0\n
-// 0013 OpVariable 2\n
-// 0016 OpConstruct 2 2\n
-// 0021 OpVariable 1\n
-// 0024 OpVariable 3\n
-// 0027 OpConstant 3\n
-// 0030 OpCall 2\n
-// 0033 OpConstruct 0 2\n
-// 0038 OpReturnValue\n
-// 0039 OpMatch 2 55\n
-// 0044 OpMatch 3 55\n
-// 0049 OpConstruct 1 0\n
-// 0054 OpReturnValue\n
-// 0055 OpMatchFailed\n
-
-// 0000 OpConstant 4
-// 0003 OpConstant 5
-// 0006 OpConstruct 1 0
-// 0011 OpConstruct 0 2
-// 0016 OpConstruct 0 2
-// 0021 OpConstant 6
-// 0024 OpConstant 7
-// 0027 OpConstruct 1 0
-// 0032 OpConstruct 0 2
-// 0037 OpConstruct 0 2
-// 0042 OpConstant 3
-// 0045 OpCall 2

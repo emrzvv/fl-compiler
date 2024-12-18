@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"github.com/alecthomas/repr"
 )
 
 type Node interface {
@@ -200,7 +199,7 @@ type ExprConstructor struct {
 
 func (ec *ExprConstructor) String() string { return "tmp" }
 
-func GetAST() {
+func GetAST(path string) *Program {
 	// TODO: struct for funname/varname?
 	var myLexer = lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Keyword", Pattern: `\b(type|fun)\b`},
@@ -222,16 +221,17 @@ func GetAST() {
 	//input := `type [List x]: Cons x [List x] | Nil .`
 
 	// program, err := parser.ParseString("", input)
-	r, err := os.Open("./input2")
+	r, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
-	program, err := parser.Parse("./input2", r)
+	program, err := parser.Parse(path, r)
 
 	if err != nil {
 		panic(err)
 	}
 
 	// pp.Println(program)
-	repr.Println(program)
+	//repr.Println(program)
+	return program
 }

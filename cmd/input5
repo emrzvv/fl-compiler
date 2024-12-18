@@ -1,0 +1,4 @@
+fun (test Int Int) -> Int :
+    (test x y) -> 0 .
+
+(test 2 3)

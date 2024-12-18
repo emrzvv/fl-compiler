@@ -1,7 +1,16 @@
 package main
 
-import "github.com/emrzvv/fl-compiler/internal/compiler/ast"
+import (
+	"fmt"
+
+	"github.com/emrzvv/fl-compiler/internal/compiler"
+	"github.com/emrzvv/fl-compiler/internal/compiler/ast"
+)
 
 func main() {
-	ast.GetAST()
+	program := ast.GetAST("./input6")
+	compiler := compiler.NewCompiler()
+	compiler.Compile(program)
+	fmt.Printf("%v+", compiler.Bytecode())
+	// compiler.Bytecode()
 }

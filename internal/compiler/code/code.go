@@ -16,7 +16,10 @@ const (
 	OpCall
 	OpReturnValue
 	OpConstruct
-	OpMatch
+	OpMatchConstructor
+	OpBindVariable
+	OpExpandArgs
+	OpMatchConstant
 	OpMatchFailed
 	OpVariable
 )
@@ -27,14 +30,17 @@ type Definition struct {
 }
 
 var definitions = map[OpCode]*Definition{
-	OpConstant:    {"OpConstant", []int{2}},
-	OpAdd:         {"OpAdd", []int{2}},
-	OpCall:        {"OpCall", []int{2}},
-	OpReturnValue: {"OpReturnValue", []int{}},
-	OpConstruct:   {"OpConstruct", []int{2, 2}}, // {index, arity}
-	OpMatch:       {"OpMatch", []int{2, 2}},     // {pattern_index, jmp_to_if_not_matched}
-	OpMatchFailed: {"OpMatchFailed", []int{}},
-	OpVariable:    {"OpVariable", []int{2}},
+	OpConstant:         {"OpConstant", []int{2}}, // {const_index}
+	OpAdd:              {"OpAdd", []int{2}},      // {args_amount}
+	OpCall:             {"OpCall", []int{2}},     // {args_amount}
+	OpReturnValue:      {"OpReturnValue", []int{}},
+	OpConstruct:        {"OpConstruct", []int{2, 2}},        // {constructor_index, arity}
+	OpMatchConstructor: {"OpMatchConstructor", []int{2, 2}}, // {constructor_index, jmp_to_if_not_matched}
+	OpBindVariable:     {"OpBindVariable", []int{2}},        // {variable_index}
+	OpExpandArgs:       {"OpExpandArgs", []int{}},
+	OpMatchConstant:    {"OpMatchConstant", []int{2, 2}}, // {const_index, jmp_to_if_not_matched}
+	OpMatchFailed:      {"OpMatchFailed", []int{}},
+	OpVariable:         {"OpVariable", []int{2}}, // {variable_index}
 }
 
 func Lookup(op byte) (*Definition, error) {
