@@ -10,7 +10,7 @@
 
 `-v` - verbose mode
 
-2. **Запуск виртуальной машины**: `go run ./cmd/vm/main.go <args>
+2. **Запуск виртуальной машины**: `go run ./cmd/vm/main.go <args>`
 
 Аргументы:
 
