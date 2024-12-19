@@ -1,11 +1,11 @@
 package ast
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"github.com/alecthomas/repr"
 )
 
 type Node interface {
@@ -28,8 +28,6 @@ type Definition struct {
 	TypeDef *TypeDef `@@`
 	FunDef  *FunDef  `| @@`
 	FunCall *FunCall `| @@`
-	// TODO: REMOVE
-	// ExprConstructor *ExprConstructor `| @@`
 }
 
 func (d *Definition) String() string { return "tmp" }
@@ -200,8 +198,7 @@ type ExprConstructor struct {
 
 func (ec *ExprConstructor) String() string { return "tmp" }
 
-func GetAST() {
-	// TODO: struct for funname/varname?
+func GetAST(path string) *Program {
 	var myLexer = lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Keyword", Pattern: `\b(type|fun)\b`},
 		{Name: "Operator", Pattern: `->|\||:`},
@@ -219,19 +216,124 @@ func GetAST() {
 		participle.Lexer(myLexer),
 	)
 
-	//input := `type [List x]: Cons x [List x] | Nil .`
-
-	// program, err := parser.ParseString("", input)
-	r, err := os.Open("./input2")
+	r, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
-	program, err := parser.Parse("./input2", r)
+	program, err := parser.Parse(path, r)
 
 	if err != nil {
 		panic(err)
 	}
 
-	// pp.Println(program)
-	repr.Println(program)
+	return program
+}
+
+func ParseFromFile(path string) (*Program, error) {
+	var myLexer = lexer.MustSimple([]lexer.SimpleRule{
+		{Name: "Keyword", Pattern: `\b(type|fun)\b`},
+		{Name: "Operator", Pattern: `->|\||:`},
+		{Name: "Ident", Pattern: `[a-zA-Z\+][a-zA-Z0-9_]*`},
+		// {Name: "TypeName", Pattern: `[a-zA-Z][a-zA-Z0-9_]*`},
+		// {Name: "TypeGeneral", Pattern: `[a-zA-Z][a-zA-Z0-9_]*`},
+		// {Name: "FunName", Pattern: `[a-zA-Z\+\-\*\/][a-zA-Z0-9_]*`},
+		// {Name: "VarName", Pattern: `[a-zA-Z][a-zA-Z0-9_]`},
+		{Name: "Int", Pattern: `[0-9]+`}, // TODO: remove leading zeroes
+		{Name: "Punct", Pattern: `[\[\]\(\)\.]`},
+		{Name: "whitespace", Pattern: `[ \t\n\r]+`},
+	})
+
+	parser := participle.MustBuild[Program](
+		participle.Lexer(myLexer),
+	)
+
+	r, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	program, err := parser.Parse(path, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return program, nil
+}
+
+type TypeDefKey struct {
+	Name  string
+	Arity int
+}
+
+type ConstructorDefKey struct {
+	Name      string
+	Arity     int
+	Supertype *TypeDefKey
+}
+
+type FunctionDefKey struct {
+	Name string
+}
+
+type VariableDefKey struct {
+	FunName string
+	VarName string
+	Branch  int
+}
+
+func CheckSemantics(
+	node Node,
+	types map[TypeDefKey]interface{},
+	constructors map[ConstructorDefKey]interface{},
+	functions map[FunctionDefKey]interface{},
+	variables map[VariableDefKey]interface{},
+	// currentFunction *FunSignature,
+	// currentBranch int,
+) error {
+	switch node := node.(type) {
+	case *Program:
+		for _, d := range node.Definitions {
+			if d.TypeDef != nil {
+				def := getTypeDefKey(d.TypeDef)
+				_, ok := types[*def]
+				if ok {
+					return fmt.Errorf(
+						"pos %v\ntype %v already declared",
+						d.TypeDef.Pos,
+						d.TypeDef,
+					)
+				}
+				types[*def] = struct{}{}
+				for _, ta := range d.TypeDef.TypeAlternatives {
+					cdef := getConstructorDefKey(def, ta.Constructor)
+					_, ok := constructors[*cdef]
+					if ok {
+						return fmt.Errorf(
+							"pos %v\nconstructor %v already declared",
+							ta.Constructor.Pos,
+							ta.Constructor,
+						)
+					}
+
+					constructors[*cdef] = struct{}{}
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+func getTypeDefKey(t *TypeDef) *TypeDefKey {
+	return &TypeDefKey{
+		Name:  t.TypeName.Name,
+		Arity: len(t.TypeGeneral),
+	}
+}
+
+func getConstructorDefKey(supertype *TypeDefKey, c *Constructor) *ConstructorDefKey {
+	return &ConstructorDefKey{
+		Name:      c.Name,
+		Arity:     len(c.Parameters),
+		Supertype: supertype,
+	}
 }

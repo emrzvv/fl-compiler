@@ -33,6 +33,14 @@ func (i *Integer) String() string {
 	return fmt.Sprintf("%d", i.Value)
 }
 
+func (i *Integer) EqualsTo(other Object) bool {
+	otherI, ok := other.(*Integer)
+	if !ok {
+		return false
+	}
+	return i.Value == otherI.Value
+}
+
 type CompiledFunction struct {
 	Instructions code.Instructions
 }
@@ -42,7 +50,7 @@ func (cf *CompiledFunction) Type() ObjectType {
 }
 
 func (cf *CompiledFunction) String() string {
-	return fmt.Sprintf("CompiledFunction[%s]", cf.Instructions.String())
+	return fmt.Sprintf("CompiledFunction[\n%s\n]", cf.Instructions.String())
 }
 
 type Constructor struct {
@@ -63,6 +71,14 @@ supertype=%s
 	]`, c.Name, c.Arity, c.Supertype)
 }
 
+func (c *Constructor) EqualsTo(other Object) bool {
+	otherC, ok := other.(*Constructor)
+	if !ok {
+		return false
+	}
+	return c.Name == otherC.Name && c.Arity == otherC.Arity && c.Supertype == otherC.Supertype
+}
+
 type Instance struct {
 	Constructor *Constructor
 	Args        []Object
@@ -74,5 +90,9 @@ func (i *Instance) String() string {
 	for _, arg := range i.Args {
 		args = append(args, arg.String())
 	}
-	return fmt.Sprintf("Constructor Instance %s(%s)", i.Constructor.Name, strings.Join(args, ", "))
+	return fmt.Sprintf(
+		"Instance[\n  Constructor: %s\n  Args: [%s]\n]",
+		i.Constructor.Name,
+		strings.Join(args, ", "),
+	)
 }

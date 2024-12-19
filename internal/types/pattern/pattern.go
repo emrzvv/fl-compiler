@@ -24,6 +24,7 @@ type Pattern interface {
 type ConstructorPattern struct {
 	Constructor *object.Constructor
 	Args        []Pattern
+	Index       int
 }
 
 func (cp *ConstructorPattern) Type() PatternType {
@@ -82,6 +83,7 @@ func (vp *VariablePattern) Matches(obj object.Object, variables []object.Object)
 
 type ConstPattern struct {
 	Const *object.Integer
+	Index int
 }
 
 func (cp *ConstPattern) Type() PatternType {

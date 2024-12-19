@@ -15,8 +15,8 @@ type Compiler struct {
 	instructions        code.Instructions
 	constants           []object.Object
 	constructorsMapping map[string]int
-	functionsMapping    map[string]int // TODO: identify by signature
-	patterns            []pattern.Pattern
+	functionsMapping    map[string]int
+	integersMapping     map[int64]int
 	patmatJumps         []int
 	matches             [][]int
 	varMapping          map[utils.Binding]int
@@ -31,7 +31,7 @@ func NewCompiler() *Compiler {
 		constants:           []object.Object{},
 		constructorsMapping: make(map[string]int),
 		functionsMapping:    make(map[string]int),
-		patterns:            []pattern.Pattern{},
+		integersMapping:     make(map[int64]int),
 		patmatJumps:         []int{},
 		matches:             [][]int{},
 		varMapping:          make(map[utils.Binding]int),
@@ -63,13 +63,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 					return err
 				}
 			}
-			// TODO: everything below - to remove
-			// if d.ExprConstructor != nil {
-			// 	err := c.Compile(d.ExprConstructor)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// }
 		}
 	case *ast.TypeDef:
 		for _, alt := range node.TypeAlternatives {
@@ -110,7 +103,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		c.functionsMapping[node.Signature.Name] = reservedIndex
 		for i, rule := range node.Rules {
-			fmt.Printf("compiling rule %d", i)
+			// fmt.Printf("compiling rule %d", i)
 			c.currentRule = i
 			err := c.Compile(rule)
 			if err != nil {
@@ -122,7 +115,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.patmatJumps = c.patmatJumps[1:]
 		for i, _ := range c.patmatJumps {
 			c.patmatJumps[i] -= begin
+			// fmt.Printf("%d to %d ", i, c.patmatJumps[i])
 		}
+		// fmt.Printf("\n%+v", c.matches)
+		// fmt.Println()
 		c.setPatmatJumpingPoints()
 		emittedInstructions := make([]byte, end-begin+1)
 		copy(emittedInstructions, c.instructions[begin:end+1])
@@ -134,7 +130,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.FunRule:
 		patternDef := node.Pattern
 		expr := node.Expression
-		matchesPositions := []int{}
+		matchPositions := []int{}
 
 		for i := len(patternDef.Arguments) - 1; i >= 0; i-- {
 			patternArg := patternDef.Arguments[i]
@@ -142,14 +138,16 @@ func (c *Compiler) Compile(node ast.Node) error {
 			if err != nil {
 				return err
 			}
-			patternIndex := c.addPattern(pattern)
-			matchPos := c.emit(code.OpMatch, patternIndex, 0)
-			matchesPositions = append(matchesPositions, matchPos)
+
+			c.emitPatternMatching(&pattern, &matchPositions)
+			// patternIndex := c.addPattern(pattern)
+			// matchPos := c.emit(code.OpMatch, patternIndex, 0)
+			// matchesPositions = append(matchesPositions, matchPos)
 		}
-		if len(matchesPositions) > 0 {
-			c.patmatJumps = append(c.patmatJumps, matchesPositions[0])
+		if len(matchPositions) > 0 {
+			c.patmatJumps = append(c.patmatJumps, matchPositions[0])
 		}
-		c.matches = append(c.matches, matchesPositions)
+		c.matches = append(c.matches, matchPositions)
 		c.Compile(expr)
 		c.emit(code.OpReturnValue)
 
@@ -171,6 +169,14 @@ func (c *Compiler) Compile(node ast.Node) error {
 				}
 			}
 			c.emit(code.OpAdd, len(node.Arguments))
+		case "print":
+			for _, arg := range node.Arguments {
+				err := c.Compile(arg)
+				if err != nil {
+					return err
+				}
+			}
+			c.emit(code.OpPrint)
 		default:
 			for _, arg := range node.Arguments {
 				err := c.Compile(arg)
@@ -214,13 +220,16 @@ func (c *Compiler) Compile(node ast.Node) error {
 			if !ok {
 				return fmt.Errorf("no such variable")
 			}
-			fmt.Printf("PUSH VAR %s IDX %d\n", node.Variable, index)
+			// fmt.Printf("PUSH VAR %s IDX %d\n", node.Variable, index)
 			c.emit(code.OpVariable, index)
 		}
-		// TODO: Variable? emit OpGetBindings...
 	case *ast.Const:
-		number := &object.Integer{Value: int64(node.Number)}
-		c.emit(code.OpConstant, c.addConstant(number))
+		index, ok := c.integersMapping[int64(node.Number)]
+		if !ok {
+			obj := &object.Integer{Value: int64(node.Number)}
+			index = c.addConstant(obj)
+		}
+		c.emit(code.OpConstant, index)
 	}
 	return nil
 }
@@ -228,11 +237,22 @@ func (c *Compiler) Compile(node ast.Node) error {
 func (c *Compiler) setPatmatJumpingPoints() error {
 	for i, jumpTo := range c.patmatJumps {
 		for _, matchIdx := range c.matches[i] {
-			offset := 3
+			definition, err := code.Lookup(c.instructions[matchIdx])
+			if err != nil {
+				return err
+			}
+			if definition.Name == "OpBindVariable" {
+				continue
+			}
+			offset := 1
+			for _, w := range definition.OperandWidths {
+				offset += w
+			}
+			offset -= 2 // assume that last patmat arg is always jmp address
 			binary.BigEndian.PutUint16(c.instructions[matchIdx+offset:], uint16(jumpTo))
 		}
 	}
-	return nil // TODO: ???
+	return nil
 }
 
 func (c *Compiler) collectPattern(p *ast.PatternArgument) (pattern.Pattern, error) {
@@ -249,10 +269,14 @@ func (c *Compiler) collectPattern(p *ast.PatternArgument) (pattern.Pattern, erro
 		}, nil
 	}
 	if p.Const != nil {
+		index, ok := c.integersMapping[int64(p.Const.Number)]
+		obj := &object.Integer{Value: int64(p.Const.Number)}
+		if !ok {
+			index = c.addConstant(obj)
+		}
 		return &pattern.ConstPattern{
-			Const: &object.Integer{ // TODO: not only integer possible const
-				Value: int64(p.Const.Number),
-			},
+			Const: obj,
+			Index: index,
 		}, nil
 	}
 	if p.Name.Name != "" {
@@ -271,14 +295,36 @@ func (c *Compiler) collectPattern(p *ast.PatternArgument) (pattern.Pattern, erro
 		return &pattern.ConstructorPattern{
 			Constructor: c.constants[constrIndex].(*object.Constructor),
 			Args:        args,
+			Index:       constrIndex,
 		}, nil
 	}
 	return nil, fmt.Errorf("could not construct pattern: %+v", p)
 }
 
-func (c *Compiler) addPattern(pat pattern.Pattern) int {
-	c.patterns = append(c.patterns, pat)
-	return len(c.patterns) - 1
+func (c *Compiler) emitPatternMatching(p *pattern.Pattern, matchPositions *[]int) error {
+	switch pattern := (*p).(type) {
+	case *pattern.ConstructorPattern:
+		pos := c.emit(code.OpMatchConstructor, pattern.Index, 0)
+		*matchPositions = append(*matchPositions, pos)
+		if len(pattern.Args) != 0 {
+			c.emit(code.OpExpandArgs)
+			for _, arg := range pattern.Args {
+				err := c.emitPatternMatching(&arg, matchPositions)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	case *pattern.ConstPattern:
+		pos := c.emit(code.OpMatchConstant, pattern.Index, 0)
+		*matchPositions = append(*matchPositions, pos)
+	case *pattern.VariablePattern:
+		pos := c.emit(code.OpBindVariable, pattern.Index)
+		*matchPositions = append(*matchPositions, pos)
+	default:
+		return fmt.Errorf("unknown pattern: %v", p)
+	}
+	return nil
 }
 
 func (c *Compiler) addConstant(obj object.Object) int {
@@ -296,20 +342,4 @@ func (c *Compiler) addInstruction(instruction []byte) int {
 	pos := len(c.instructions)
 	c.instructions = append(c.instructions, instruction...)
 	return pos
-}
-
-func (c *Compiler) Bytecode() *Bytecode {
-	return &Bytecode{
-		Instructions: c.instructions,
-		Constants:    c.constants,
-		Patterns:     c.patterns,
-		VarAmount:    c.varAmount,
-	}
-}
-
-type Bytecode struct {
-	Instructions code.Instructions
-	Constants    []object.Object
-	Patterns     []pattern.Pattern
-	VarAmount    int
 }

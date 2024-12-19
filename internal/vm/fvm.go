@@ -40,14 +40,13 @@ func (fvm *FVM) popFrame() *Frame {
 
 func NewFVM(bytecode *compiler.Bytecode) *FVM {
 	main := &object.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(main, 0)
+	mainFrame := NewFrame(main, 0, []object.Object{})
 	frames := make([]*Frame, MaxFrames)
 	frames[0] = mainFrame
 
 	return &FVM{
 		constants:   bytecode.Constants,
-		patterns:    bytecode.Patterns,
-		variables:   make([]object.Object, bytecode.VarAmount+1), // TODO: what len?
+		variables:   make([]object.Object, bytecode.VarAmount+1),
 		frames:      frames,
 		framesIndex: 1,
 		stack:       make([]object.Object, StackSize),
@@ -56,8 +55,8 @@ func NewFVM(bytecode *compiler.Bytecode) *FVM {
 }
 
 func (fvm *FVM) Run() error {
-	fmt.Println(fvm.currentFrame().Instructions().String())
-	fmt.Println("====================")
+	// fmt.Println(fvm.currentFrame().Instructions().String())
+	// fmt.Println("====================")
 
 	var ip int
 	var instructions code.Instructions
@@ -103,9 +102,9 @@ func (fvm *FVM) Run() error {
 			arity := code.ReadUint16(instructions[ip+3:])
 			fvm.currentFrame().ip += 4
 			// fmt.Println("============\nSTACK BEFORE OPCONSTRUCT")
-			for i := 0; i < fvm.sp; i++ {
-				fmt.Printf("%+v\n", fvm.stack[i])
-			}
+			// for i := 0; i < fvm.sp; i++ {
+			// 	fmt.Printf("%+v\n", fvm.stack[i])
+			// }
 			// fmt.Printf("VARIABLES\n")
 			vars := []string{}
 			for _, v := range fvm.variables {
@@ -119,6 +118,7 @@ func (fvm *FVM) Run() error {
 				return fmt.Errorf("error when exctracting constructor type from constant pull")
 			}
 			args := make([]object.Object, arity)
+
 			for i := int(arity) - 1; i >= 0; i-- {
 				args[i] = fvm.pop()
 			}
@@ -136,7 +136,7 @@ func (fvm *FVM) Run() error {
 
 			fvm.push(instance)
 		case code.OpCall:
-			argsAmount := code.ReadUint16(instructions[ip+1:])
+			argsAmount := int(code.ReadUint16(instructions[ip+1:]))
 			fvm.currentFrame().ip += 2
 			// fmt.Println("STACK BEFORE OPCALL")
 			// for i := 0; i < fvm.sp; i++ {
@@ -146,8 +146,22 @@ func (fvm *FVM) Run() error {
 			if !ok {
 				return fmt.Errorf("error when trying to call function")
 			}
-			frame := NewFrame(function, int(argsAmount))
 			fvm.pop() // pop function object
+			args := make([]object.Object, argsAmount)
+			// fmt.Println("FVM STACK BEGIN")
+			// fvm.printStack()
+			// fmt.Println("FVM STACK END")
+			for i := 0; i < argsAmount; i++ {
+				args[i] = fvm.pop() // transfer args to frame
+			}
+			frame := NewFrame(function, argsAmount, args)
+			err := frame.transferArgs()
+			// frame.printArgs()
+			// fmt.Println("-----------")
+			// frame.printStack()
+			if err != nil {
+				return err
+			}
 			fvm.pushFrame(frame)
 		case code.OpReturnValue:
 			// value := fvm.pop()
@@ -160,30 +174,57 @@ func (fvm *FVM) Run() error {
 			// }
 		case code.OpMatchFailed:
 			return fmt.Errorf("error when trying to match")
-		case code.OpMatch:
+		case code.OpExpandArgs:
+			instance, ok := fvm.currentFrame().pop().(*object.Instance)
+			if !ok {
+				return fmt.Errorf("error when trying to expand constructor")
+			}
+			for i := len(instance.Args) - 1; i >= 0; i-- {
+				err := fvm.currentFrame().push(instance.Args[i])
+				if err != nil {
+					return err
+				}
+			}
+		case code.OpMatchConstructor:
+			instance, ok := fvm.currentFrame().top().(*object.Instance)
+			if !ok {
+				return fmt.Errorf("error when trying to match constructor, got %+v", fvm.currentFrame().top())
+			}
 			patternIdx := code.ReadUint16(instructions[ip+1:])
+			constructorPattern := fvm.constants[patternIdx]
 			jumpIfFail := code.ReadUint16(instructions[ip+3:])
 			fvm.currentFrame().ip += 4
-
-			arg := fvm.pop()
-			err := fvm.currentFrame().push(arg)
-			if err != nil {
-				return err
-			}
-			// fmt.Println("CURRENT STACK")
-			// for i := 0; i < fvm.sp; i++ {
-			// 	fmt.Printf("%s\n", fvm.stack[i].String())
-			// }
-			// fmt.Println("--------------")
-			pattern := fvm.patterns[patternIdx]
-			// fmt.Printf("\nARG %s\n", arg.String())
-			if pattern.Matches(arg, fvm.variables) {
+			if instance.Constructor.EqualsTo(constructorPattern) {
+				if instance.Constructor.Arity == 0 {
+					fvm.currentFrame().pop()
+				}
 				continue
 			}
-			for fvm.currentFrame().sp > 0 {
-				fvm.push(fvm.currentFrame().pop())
-			}
+			fvm.currentFrame().clear()
+			fvm.currentFrame().transferArgs()
 			fvm.currentFrame().ip = int(jumpIfFail) - 1
+		case code.OpMatchConstant:
+			constant, ok := fvm.currentFrame().pop().(*object.Integer)
+			if !ok {
+				return fmt.Errorf("error when trying to match constant")
+			}
+			constantIdx := code.ReadUint16(instructions[ip+1:])
+			constantPattern := fvm.constants[constantIdx]
+			jumpIfFail := code.ReadUint16(instructions[ip+3:])
+			fvm.currentFrame().ip += 4
+			if constant.EqualsTo(constantPattern) {
+				continue
+			}
+			fvm.currentFrame().clear()
+			fvm.currentFrame().transferArgs()
+			fvm.currentFrame().ip = int(jumpIfFail) - 1
+		case code.OpBindVariable:
+			idx := code.ReadUint16(instructions[ip+1:])
+			fvm.variables[idx] = fvm.currentFrame().pop()
+			fvm.currentFrame().ip += 2
+		case code.OpPrint:
+			obj := fvm.pop()
+			fmt.Println(obj.String())
 		}
 	}
 	return nil
@@ -211,4 +252,11 @@ func (fvm *FVM) pop() object.Object {
 	o := fvm.stack[fvm.sp-1]
 	fvm.sp--
 	return o
+}
+
+func (fvm *FVM) printStack() {
+	fmt.Printf("len: %d, cap: %d, sp: %d\n", len(fvm.stack), cap(fvm.stack), fvm.sp)
+	for i := fvm.sp; i >= 0; i-- {
+		fmt.Printf("======\n[%d]: %+v\n======\n", i, fvm.stack[i])
+	}
 }

@@ -1,0 +1,5 @@
+type [List x]: Cons x [List x] | Nil .
+
+fun (sum [List Int]) -> Int :
+    (sum [Cons x xs]) -> (+ x (sum xs)) | 
+    (sum [Nil]) -> 0 .
