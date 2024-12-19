@@ -115,10 +115,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 		c.patmatJumps = c.patmatJumps[1:]
 		for i, _ := range c.patmatJumps {
 			c.patmatJumps[i] -= begin
-			fmt.Printf("%d to %d ", i, c.patmatJumps[i])
+			// fmt.Printf("%d to %d ", i, c.patmatJumps[i])
 		}
-		fmt.Printf("\n%+v", c.matches)
-		fmt.Println()
+		// fmt.Printf("\n%+v", c.matches)
+		// fmt.Println()
 		c.setPatmatJumpingPoints()
 		emittedInstructions := make([]byte, end-begin+1)
 		copy(emittedInstructions, c.instructions[begin:end+1])

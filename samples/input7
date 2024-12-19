@@ -1,0 +1,9 @@
+type [List x]: Cons x [List x] | Nil .
+type [Letter]: A | B | C | D .
+
+fun (fab [List Letter]) -> [List Letter] :
+    (fab [Cons [A] xs]) -> [Cons [B] (fab xs)] |
+    (fab [Cons x xs]) -> [Cons x (fab xs)] |
+    (fab [Nil]) -> [Nil] .
+
+(print (fab [Cons [A] [Cons [B] [Cons [A] [Cons [A] [Nil]]]]]))

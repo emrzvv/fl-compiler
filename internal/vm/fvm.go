@@ -55,8 +55,8 @@ func NewFVM(bytecode *compiler.Bytecode) *FVM {
 }
 
 func (fvm *FVM) Run() error {
-	fmt.Println(fvm.currentFrame().Instructions().String())
-	fmt.Println("====================")
+	// fmt.Println(fvm.currentFrame().Instructions().String())
+	// fmt.Println("====================")
 
 	var ip int
 	var instructions code.Instructions
@@ -72,7 +72,7 @@ func (fvm *FVM) Run() error {
 		case code.OpConstant:
 			constIndex := code.ReadUint16(instructions[ip+1:])
 			fvm.currentFrame().ip += 2
-			fmt.Printf("constIndex: %d %d", constIndex, ip)
+			// fmt.Printf("constIndex: %d %d", constIndex, ip)
 			err := fvm.push(fvm.constants[constIndex])
 			if err != nil {
 				return err
@@ -102,9 +102,9 @@ func (fvm *FVM) Run() error {
 			arity := code.ReadUint16(instructions[ip+3:])
 			fvm.currentFrame().ip += 4
 			// fmt.Println("============\nSTACK BEFORE OPCONSTRUCT")
-			for i := 0; i < fvm.sp; i++ {
-				fmt.Printf("%+v\n", fvm.stack[i])
-			}
+			// for i := 0; i < fvm.sp; i++ {
+			// 	fmt.Printf("%+v\n", fvm.stack[i])
+			// }
 			// fmt.Printf("VARIABLES\n")
 			vars := []string{}
 			for _, v := range fvm.variables {
@@ -148,17 +148,17 @@ func (fvm *FVM) Run() error {
 			}
 			fvm.pop() // pop function object
 			args := make([]object.Object, argsAmount)
-			fmt.Println("FVM STACK BEGIN")
-			fvm.printStack()
-			fmt.Println("FVM STACK END")
+			// fmt.Println("FVM STACK BEGIN")
+			// fvm.printStack()
+			// fmt.Println("FVM STACK END")
 			for i := 0; i < argsAmount; i++ {
 				args[i] = fvm.pop() // transfer args to frame
 			}
 			frame := NewFrame(function, argsAmount, args)
 			err := frame.transferArgs()
-			frame.printArgs()
-			fmt.Println("-----------")
-			frame.printStack()
+			// frame.printArgs()
+			// fmt.Println("-----------")
+			// frame.printStack()
 			if err != nil {
 				return err
 			}

@@ -229,3 +229,33 @@ func GetAST(path string) *Program {
 
 	return program
 }
+
+func ParseFromFile(path string) (*Program, error) {
+	var myLexer = lexer.MustSimple([]lexer.SimpleRule{
+		{Name: "Keyword", Pattern: `\b(type|fun)\b`},
+		{Name: "Operator", Pattern: `->|\||:`},
+		{Name: "Ident", Pattern: `[a-zA-Z\+][a-zA-Z0-9_]*`},
+		// {Name: "TypeName", Pattern: `[a-zA-Z][a-zA-Z0-9_]*`},
+		// {Name: "TypeGeneral", Pattern: `[a-zA-Z][a-zA-Z0-9_]*`},
+		// {Name: "FunName", Pattern: `[a-zA-Z\+\-\*\/][a-zA-Z0-9_]*`},
+		// {Name: "VarName", Pattern: `[a-zA-Z][a-zA-Z0-9_]`},
+		{Name: "Int", Pattern: `[0-9]+`}, // TODO: remove leading zeroes
+		{Name: "Punct", Pattern: `[\[\]\(\)\.]`},
+		{Name: "whitespace", Pattern: `[ \t\n\r]+`},
+	})
+
+	parser := participle.MustBuild[Program](
+		participle.Lexer(myLexer),
+	)
+
+	r, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	program, err := parser.Parse(path, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return program, nil
+}
