@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/alecthomas/participle/v2"
@@ -27,8 +28,6 @@ type Definition struct {
 	TypeDef *TypeDef `@@`
 	FunDef  *FunDef  `| @@`
 	FunCall *FunCall `| @@`
-	// TODO: REMOVE
-	// ExprConstructor *ExprConstructor `| @@`
 }
 
 func (d *Definition) String() string { return "tmp" }
@@ -258,4 +257,83 @@ func ParseFromFile(path string) (*Program, error) {
 	}
 
 	return program, nil
+}
+
+type TypeDefKey struct {
+	Name  string
+	Arity int
+}
+
+type ConstructorDefKey struct {
+	Name      string
+	Arity     int
+	Supertype *TypeDefKey
+}
+
+type FunctionDefKey struct {
+	Name string
+}
+
+type VariableDefKey struct {
+	FunName string
+	VarName string
+	Branch  int
+}
+
+func CheckSemantics(
+	node Node,
+	types map[TypeDefKey]interface{},
+	constructors map[ConstructorDefKey]interface{},
+	functions map[FunctionDefKey]interface{},
+	variables map[VariableDefKey]interface{},
+	// currentFunction *FunSignature,
+	// currentBranch int,
+) error {
+	switch node := node.(type) {
+	case *Program:
+		for _, d := range node.Definitions {
+			if d.TypeDef != nil {
+				def := getTypeDefKey(d.TypeDef)
+				_, ok := types[*def]
+				if ok {
+					return fmt.Errorf(
+						"pos %v\ntype %v already declared",
+						d.TypeDef.Pos,
+						d.TypeDef,
+					)
+				}
+				types[*def] = struct{}{}
+				for _, ta := range d.TypeDef.TypeAlternatives {
+					cdef := getConstructorDefKey(def, ta.Constructor)
+					_, ok := constructors[*cdef]
+					if ok {
+						return fmt.Errorf(
+							"pos %v\nconstructor %v already declared",
+							ta.Constructor.Pos,
+							ta.Constructor,
+						)
+					}
+
+					constructors[*cdef] = struct{}{}
+				}
+			}
+
+		}
+	}
+	return nil
+}
+
+func getTypeDefKey(t *TypeDef) *TypeDefKey {
+	return &TypeDefKey{
+		Name:  t.TypeName.Name,
+		Arity: len(t.TypeGeneral),
+	}
+}
+
+func getConstructorDefKey(supertype *TypeDefKey, c *Constructor) *ConstructorDefKey {
+	return &ConstructorDefKey{
+		Name:      c.Name,
+		Arity:     len(c.Parameters),
+		Supertype: supertype,
+	}
 }
