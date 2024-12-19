@@ -46,8 +46,7 @@ func NewFVM(bytecode *compiler.Bytecode) *FVM {
 
 	return &FVM{
 		constants:   bytecode.Constants,
-		patterns:    bytecode.Patterns,
-		variables:   make([]object.Object, bytecode.VarAmount+1), // TODO: what len?
+		variables:   make([]object.Object, bytecode.VarAmount+1),
 		frames:      frames,
 		framesIndex: 1,
 		stack:       make([]object.Object, StackSize),
@@ -223,30 +222,9 @@ func (fvm *FVM) Run() error {
 			idx := code.ReadUint16(instructions[ip+1:])
 			fvm.variables[idx] = fvm.currentFrame().pop()
 			fvm.currentFrame().ip += 2
-			// case code.OpMatch:
-			// 	patternIdx := code.ReadUint16(instructions[ip+1:])
-			// 	jumpIfFail := code.ReadUint16(instructions[ip+3:])
-			// 	fvm.currentFrame().ip += 4
-
-			// 	arg := fvm.pop()
-			// 	err := fvm.currentFrame().push(arg)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	// fmt.Println("CURRENT STACK")
-			// 	// for i := 0; i < fvm.sp; i++ {
-			// 	// 	fmt.Printf("%s\n", fvm.stack[i].String())
-			// 	// }
-			// 	// fmt.Println("--------------")
-			// 	pattern := fvm.patterns[patternIdx]
-			// 	// fmt.Printf("\nARG %s\n", arg.String())
-			// 	if pattern.Matches(arg, fvm.variables) {
-			// 		continue
-			// 	}
-			// 	for fvm.currentFrame().sp > 0 {
-			// 		fvm.push(fvm.currentFrame().pop())
-			// 	}
-			// 	fvm.currentFrame().ip = int(jumpIfFail) - 1
+		case code.OpPrint:
+			obj := fvm.pop()
+			fmt.Println(obj.String())
 		}
 	}
 	return nil

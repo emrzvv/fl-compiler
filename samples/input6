@@ -3,4 +3,4 @@ fun (sum [List Int]) -> Int :
     (sum [Cons x xs]) -> 1 |
     (sum [Nil]) -> 0 .
 
-(sum [Cons 1 [Cons 2 [Nil]]])
+(print (sum [Cons 1 [Cons 2 [Nil]]]))

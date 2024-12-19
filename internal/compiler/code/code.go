@@ -22,6 +22,7 @@ const (
 	OpMatchConstant
 	OpMatchFailed
 	OpVariable
+	OpPrint
 )
 
 type Definition struct {
@@ -41,6 +42,7 @@ var definitions = map[OpCode]*Definition{
 	OpMatchConstant:    {"OpMatchConstant", []int{2, 2}}, // {const_index, jmp_to_if_not_matched}
 	OpMatchFailed:      {"OpMatchFailed", []int{}},
 	OpVariable:         {"OpVariable", []int{2}}, // {variable_index}
+	OpPrint:            {"OpPrint", []int{}},
 }
 
 func Lookup(op byte) (*Definition, error) {

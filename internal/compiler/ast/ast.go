@@ -200,7 +200,6 @@ type ExprConstructor struct {
 func (ec *ExprConstructor) String() string { return "tmp" }
 
 func GetAST(path string) *Program {
-	// TODO: struct for funname/varname?
 	var myLexer = lexer.MustSimple([]lexer.SimpleRule{
 		{Name: "Keyword", Pattern: `\b(type|fun)\b`},
 		{Name: "Operator", Pattern: `->|\||:`},
@@ -218,9 +217,6 @@ func GetAST(path string) *Program {
 		participle.Lexer(myLexer),
 	)
 
-	//input := `type [List x]: Cons x [List x] | Nil .`
-
-	// program, err := parser.ParseString("", input)
 	r, err := os.Open(path)
 	if err != nil {
 		panic(err)
@@ -231,7 +227,5 @@ func GetAST(path string) *Program {
 		panic(err)
 	}
 
-	// pp.Println(program)
-	//repr.Println(program)
 	return program
 }

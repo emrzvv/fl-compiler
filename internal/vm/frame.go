@@ -33,7 +33,7 @@ func (f *Frame) Instructions() code.Instructions {
 
 func (f *Frame) push(o object.Object) error {
 	if f.sp >= StackSize {
-		return fmt.Errorf("stack overflow") // TODO: really overflow?
+		return fmt.Errorf("stack overflow")
 	}
 
 	f.stack[f.sp] = o

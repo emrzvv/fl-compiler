@@ -8,9 +8,9 @@ import (
 )
 
 func main() {
-	program := ast.GetAST("./input6")
+	program := ast.GetAST("./samples/input6")
 	compiler := compiler.NewCompiler()
 	compiler.Compile(program)
 	fmt.Printf("%v+", compiler.Bytecode())
-	// compiler.Bytecode()
+	compiler.Bytecode().WriteToFile("./bin/out")
 }

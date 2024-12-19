@@ -17,7 +17,6 @@ type Compiler struct {
 	constructorsMapping map[string]int
 	functionsMapping    map[string]int
 	integersMapping     map[int64]int
-	patterns            []pattern.Pattern // TODO: remove
 	patmatJumps         []int
 	matches             [][]int
 	varMapping          map[utils.Binding]int
@@ -33,7 +32,6 @@ func NewCompiler() *Compiler {
 		constructorsMapping: make(map[string]int),
 		functionsMapping:    make(map[string]int),
 		integersMapping:     make(map[int64]int),
-		patterns:            []pattern.Pattern{},
 		patmatJumps:         []int{},
 		matches:             [][]int{},
 		varMapping:          make(map[utils.Binding]int),
@@ -65,13 +63,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 					return err
 				}
 			}
-			// TODO: everything below - to remove
-			// if d.ExprConstructor != nil {
-			// 	err := c.Compile(d.ExprConstructor)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// }
 		}
 	case *ast.TypeDef:
 		for _, alt := range node.TypeAlternatives {
@@ -178,6 +169,14 @@ func (c *Compiler) Compile(node ast.Node) error {
 				}
 			}
 			c.emit(code.OpAdd, len(node.Arguments))
+		case "print":
+			for _, arg := range node.Arguments {
+				err := c.Compile(arg)
+				if err != nil {
+					return err
+				}
+			}
+			c.emit(code.OpPrint)
 		default:
 			for _, arg := range node.Arguments {
 				err := c.Compile(arg)
@@ -328,11 +327,6 @@ func (c *Compiler) emitPatternMatching(p *pattern.Pattern, matchPositions *[]int
 	return nil
 }
 
-func (c *Compiler) addPattern(pat pattern.Pattern) int {
-	c.patterns = append(c.patterns, pat)
-	return len(c.patterns) - 1
-}
-
 func (c *Compiler) addConstant(obj object.Object) int {
 	c.constants = append(c.constants, obj)
 	return len(c.constants) - 1
@@ -348,20 +342,4 @@ func (c *Compiler) addInstruction(instruction []byte) int {
 	pos := len(c.instructions)
 	c.instructions = append(c.instructions, instruction...)
 	return pos
-}
-
-func (c *Compiler) Bytecode() *Bytecode {
-	return &Bytecode{
-		Instructions: c.instructions,
-		Constants:    c.constants,
-		Patterns:     c.patterns,
-		VarAmount:    c.varAmount,
-	}
-}
-
-type Bytecode struct {
-	Instructions code.Instructions
-	Constants    []object.Object
-	Patterns     []pattern.Pattern
-	VarAmount    int
 }

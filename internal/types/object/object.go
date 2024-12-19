@@ -90,5 +90,9 @@ func (i *Instance) String() string {
 	for _, arg := range i.Args {
 		args = append(args, arg.String())
 	}
-	return fmt.Sprintf("Constructor Instance %s(%s)", i.Constructor.Name, strings.Join(args, ", "))
+	return fmt.Sprintf(
+		"Instance[\n  Constructor: %s\n  Args: [%s]\n]",
+		i.Constructor.Name,
+		strings.Join(args, ", "),
+	)
 }
